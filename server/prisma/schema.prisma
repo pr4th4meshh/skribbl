@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+  output = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  email       String   @unique
+  password    String
+  avatar      String?
+  totalScore  Int      @default(0)
+  gamesPlayed Int      @default(0)
+  wins        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hostedRooms Room[]      @relation("RoomHost")
+  gameScores  GameScore[]
+}
+
+model Room {
+  id         String     @id @default(cuid())
+  code       String     @unique
+  name       String
+  hostId     String
+  host       User       @relation("RoomHost", fields: [hostId], references: [id], onDelete: Cascade)
+  isPrivate  Boolean    @default(false)
+  maxPlayers Int        @default(8)
+  rounds     Int        @default(3)
+  drawTime   Int        @default(80)
+  language   String     @default("english")
+  status     RoomStatus @default(WAITING)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  games Game[]
+}
+
+model Game {
+  id        String     @id @default(cuid())
+  roomId    String
+  room      Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  status    GameStatus @default(IN_PROGRESS)
+  createdAt DateTime   @default(now())
+  endedAt   DateTime?
+
+  scores GameScore[]
+}
+
+model GameScore {
+  id     String @id @default(cuid())
+  gameId String
+  game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  score  Int    @default(0)
+
+  @@unique([gameId, userId])
+}
+
+enum RoomStatus {
+  WAITING
+  IN_PROGRESS
+  ENDED
+}
+
+enum GameStatus {
+  IN_PROGRESS
+  ENDED
+}
