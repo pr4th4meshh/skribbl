@@ -4,4 +4,4 @@ dist
 .env.local
 
 server/prisma/migrations
-generated/prisma
+generated
