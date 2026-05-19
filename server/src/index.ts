@@ -1,12 +1,32 @@
-import express, { Request, Response } from 'express';
+import 'dotenv/config';
+import http from 'http';
+import app from './app';
+import { env } from './shared/config/env';
+import { prisma } from './shared/prisma/client';
+import { connectRedis } from './shared/config/redis';
+import { initSocket } from './socket';
 
-const app = express();
-const PORT = 6969;
+const httpServer = http.createServer(app);
 
-app.get('/', (req: Request, res: Response) => {
-  res.send('Hello, TypeScript Express!');
+initSocket(httpServer);
+
+async function start() {
+  try {
+    await connectRedis();
+    await prisma.$connect();
+    httpServer.listen(env.PORT, () => {
+      console.log(`[Server] running on port ${env.PORT} [${env.NODE_ENV}]`);
+    });
+  } catch (err) {
+    console.error('[Server] startup failed:', err);
+    process.exit(1);
+  }
+}
+
+process.on('SIGTERM', async () => {
+  await prisma.$disconnect();
+  httpServer.close();
+  process.exit(0);
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running at http://localhost:${PORT}`);
-});
+start();
