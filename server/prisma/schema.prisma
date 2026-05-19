@@ -8,7 +8,7 @@ datasource db {
 }
 
 model User {
-  id          String   @id @default(cuid())
+  id          Int   @id @default(autoincrement())
   username    String   @unique
   email       String   @unique
   password    String
@@ -24,10 +24,10 @@ model User {
 }
 
 model Room {
-  id         String     @id @default(cuid())
+  id         Int     @id @default(autoincrement())
   code       String     @unique
   name       String
-  hostId     String
+  hostId     Int
   host       User       @relation("RoomHost", fields: [hostId], references: [id], onDelete: Cascade)
   isPrivate  Boolean    @default(false)
   maxPlayers Int        @default(8)
@@ -42,8 +42,8 @@ model Room {
 }
 
 model Game {
-  id        String     @id @default(cuid())
-  roomId    String
+  id        Int     @id @default(autoincrement())
+  roomId    Int
   room      Room       @relation(fields: [roomId], references: [id], onDelete: Cascade)
   status    GameStatus @default(IN_PROGRESS)
   createdAt DateTime   @default(now())
@@ -53,10 +53,10 @@ model Game {
 }
 
 model GameScore {
-  id     String @id @default(cuid())
-  gameId String
+  id     Int @id @default(autoincrement())
+  gameId Int
   game   Game   @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  userId String
+  userId Int
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   score  Int    @default(0)
 
