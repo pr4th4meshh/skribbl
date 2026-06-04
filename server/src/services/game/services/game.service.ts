@@ -84,7 +84,7 @@ export class GameService {
 
   async handleAutoWord(code: string, io: Server) {
     const state = await roomService.getRoomState(code);
-    if (!state || state.currentWord) return;
+    if (!state || state.currentWord || !state.wordChoices?.length) return;
     const word = state.wordChoices[Math.floor(Math.random() * state.wordChoices.length)]!;
     await this.setWord(code, word, io);
   }
