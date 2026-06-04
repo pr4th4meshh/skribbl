@@ -38,7 +38,7 @@ export function registerGameHandlers(io: Server, socket: AuthSocket) {
       const ctx = await getContext(socket.id);
       if (!ctx) { console.error('[game:select-word] no context for socket', socket.id); return; }
       if (!ctx.player?.isDrawing) { console.warn('[game:select-word] player is not drawer', ctx.playerId); return; }
-      if (!ctx.state.wordChoices.includes(word)) { console.warn('[game:select-word] word not in choices', word, ctx.state.wordChoices); return; }
+      if (!ctx.state.wordChoices?.includes(word)) { console.warn('[game:select-word] word not in choices', word, ctx.state.wordChoices); return; }
       await gameService.setWord(ctx.code, word, io);
     } catch (err) {
       console.error('[game:select-word] error:', err);
