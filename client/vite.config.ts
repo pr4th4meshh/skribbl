@@ -11,7 +11,10 @@ export default defineConfig({
     babel({ presets: [reactCompilerPreset()] }),
   ],
   resolve: {
-    alias: { '@': path.resolve(__dirname, './src') },
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+      '@skribbl/shared': path.resolve(__dirname, '../shared/src/index.ts'),
+    },
   },
   server: {
     port: 3000,

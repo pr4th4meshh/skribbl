@@ -25,7 +25,8 @@
     "noUncheckedSideEffectImports": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@skribbl/shared": ["../shared/src/index.ts"]
     }
   },
   "include": ["src"]
