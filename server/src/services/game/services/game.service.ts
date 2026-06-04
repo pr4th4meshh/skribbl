@@ -10,7 +10,14 @@ import {
   clearGameJobs,
 } from '../queue/game.queue';
 import { roomDAO } from '../../room/dao/room.dao';
-import type { RoomState } from '../../../shared/types';
+import { redis } from '../../../shared/config/redis';
+import type { RoomState, ChatMessage } from '../../../shared/types';
+
+async function persistMessage(code: string, msg: ChatMessage) {
+  await redis.rpush(`messages:${code}`, JSON.stringify(msg));
+  await redis.ltrim(`messages:${code}`, -200, -1);
+  await redis.expire(`messages:${code}`, 86400);
+}
 
 export class GameService {
   constructor(private readonly dao: GameDAO) {}
@@ -19,15 +26,14 @@ export class GameService {
     const state = await roomService.getRoomState(code);
     if (!state || state.status !== 'WAITING') return false;
 
-    const connected = state.players.filter((p) => p.connected);
-    if (connected.length < 2) return false;
+    if (state.players.length < 2) return false;
 
     const game = await this.dao.createGame(state.id);
 
     state.status = 'IN_PROGRESS';
     state.gameId = String(game.id); // int → string at app boundary
     state.currentRound = 1;
-    state.drawerOrder = connected.map((p) => p.id);
+    state.drawerOrder = state.players.map((p) => p.id);
     state.drawerIndex = 0;
 
     await roomService.setRoomState(state);
@@ -48,7 +54,8 @@ export class GameService {
     if (!drawerId) { await this.advanceDrawer(code, io); return; }
 
     const drawerIdx = state.players.findIndex((p) => p.id === drawerId);
-    if (drawerIdx === -1 || !state.players[drawerIdx]?.connected) {
+    if (drawerIdx === -1) {
+      console.warn('[beginRound] drawer not found in players, advancing. drawerId:', drawerId, 'players:', state.players.map(p => p.id));
       await this.advanceDrawer(code, io);
       return;
     }
@@ -64,6 +71,7 @@ export class GameService {
     await roomService.setRoomState(state);
 
     const drawer = state.players[drawerIdx]!;
+    console.log('[beginRound] drawer:', drawer.username, 'socketId:', drawer.socketId, 'words:', words);
     io.to(code).emit('game:round-start', {
       round: state.currentRound,
       totalRounds: state.totalRounds,
@@ -83,9 +91,9 @@ export class GameService {
 
   async setWord(code: string, word: string, io: Server) {
     const state = await roomService.getRoomState(code);
-    if (!state || state.currentWord) return;
+    if (!state || state.currentWord) { console.warn('[setWord] skipped — no state or word already set'); return; }
 
-    const autoWordJob = await gameQueue.getJob(`auto-word:${code}`);
+    const autoWordJob = await gameQueue.getJob(`autoword-${code}`);
     if (autoWordJob) await autoWordJob.remove();
 
     state.currentWord = word;
@@ -94,6 +102,10 @@ export class GameService {
     state.roundStartedAt = Date.now();
 
     await roomService.setRoomState(state);
+
+    // Send the actual word only to the drawer; everyone else gets the masked hint
+    const drawer = state.players.find((p) => p.isDrawing);
+    if (drawer) io.to(drawer.socketId).emit('game:word-selected', { word });
     io.to(code).emit('game:hint', { hint: state.currentWordHint });
 
     const drawTimeMs = state.drawTime * 1_000;
@@ -145,7 +157,11 @@ export class GameService {
       scores: state.players.map((p) => ({ id: p.id, score: p.score })),
     });
 
-    const allGuessed = state.players.filter((p) => !p.isDrawing && p.connected).every((p) => p.hasGuessed);
+    const guessMsg: ChatMessage = { playerId: player.id, username: player.username, text: '', isCorrect: true, isSystem: false, timestamp: Date.now() };
+    await persistMessage(code, guessMsg);
+    io.to(code).emit('game:message', guessMsg);
+
+    const allGuessed = state.players.filter((p) => !p.isDrawing).every((p) => p.hasGuessed);
     if (allGuessed) {
       await clearGameJobs(code);
       await this.endRound(code, io);
@@ -158,10 +174,12 @@ export class GameService {
     const state = await roomService.getRoomState(code);
     if (!state || state.status !== 'IN_PROGRESS') return;
 
-    io.to(code).emit('game:round-end', {
-      word: state.currentWord,
-      scores: state.players.map((p) => ({ id: p.id, username: p.username, score: p.score })),
-    });
+    const roundEndScores = state.players.map((p) => ({ id: p.id, username: p.username, score: p.score }));
+    io.to(code).emit('game:round-end', { word: state.currentWord, scores: roundEndScores });
+
+    const wordMsg: ChatMessage = { playerId: '', username: '', text: `The word was: ${state.currentWord}`, isCorrect: false, isSystem: true, timestamp: Date.now() };
+    await persistMessage(code, wordMsg);
+    io.to(code).emit('game:message', wordMsg);
 
     await new Promise<void>((r) => setTimeout(r, 4_000));
     await this.advanceDrawer(code, io);
@@ -171,11 +189,16 @@ export class GameService {
     const state = await roomService.getRoomState(code);
     if (!state || state.status !== 'IN_PROGRESS') return;
 
+    if (state.players.length < 2) {
+      await this.endGame(code, io, state);
+      return;
+    }
+
     state.drawerIndex++;
     if (state.drawerIndex >= state.drawerOrder.length) {
       state.currentRound++;
       state.drawerIndex = 0;
-      state.drawerOrder = state.players.filter((p) => p.connected).map((p) => p.id);
+      state.drawerOrder = state.players.map((p) => p.id);
     }
 
     if (state.currentRound > state.totalRounds || state.drawerOrder.length === 0) {

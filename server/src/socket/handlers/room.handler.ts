@@ -2,7 +2,6 @@ import { v4 as uuid } from 'uuid';
 import type { Server } from 'socket.io';
 import { redis } from '../../shared/config/redis';
 import { roomService } from '../../services/room/services/room.service';
-import { gameService } from '../../services/game/services/game.service';
 import { clearGameJobs } from '../../services/game/queue/game.queue';
 import type { AuthSocket } from '../middleware';
 import type { Player, RoomState } from '../../shared/types';
@@ -28,6 +27,7 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
     const state = await roomService.getRoomState(code);
     if (!state) { socket.emit('error', { message: 'Room not found' }); return; }
     if (state.status === 'ENDED') { socket.emit('error', { message: 'Room has ended' }); return; }
+    if (state.status === 'IN_PROGRESS') { socket.emit('error', { message: 'Game already in progress' }); return; }
 
     const isGuest = !socket.user;
     const playerId = socket.user?.userId ?? `guest_${uuid()}`;
@@ -35,27 +35,28 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
 
     const existing = state.players.find((p) => p.id === playerId);
     if (existing) {
+      // Same player re-connecting (e.g. React StrictMode double-mount race):
+      // take over the slot rather than creating a duplicate entry.
       existing.socketId = socket.id;
       existing.connected = true;
     } else {
-      if (state.status === 'IN_PROGRESS') { socket.emit('error', { message: 'Game already in progress' }); return; }
-      const connectedCount = state.players.filter((p) => p.connected).length;
-      if (connectedCount >= state.maxPlayers) { socket.emit('error', { message: 'Room is full' }); return; }
-
-      const player: Player = {
+      if (state.players.length >= state.maxPlayers) { socket.emit('error', { message: 'Room is full' }); return; }
+      state.players.push({
         id: playerId, socketId: socket.id, username, avatar: null,
         score: 0, hasGuessed: false, isDrawing: false,
         isHost: state.players.length === 0, isGuest, connected: true,
-      };
-      state.players.push(player);
+      });
     }
 
     await roomService.setRoomState(state);
     await redis.setex(SOCKET_ROOM_KEY(socket.id), 86400, code);
     await redis.setex(SOCKET_PID_KEY(socket.id), 86400, playerId);
 
+    const messagesRaw = await redis.lrange(`messages:${code}`, 0, -1);
+    const messages = messagesRaw.map((m) => JSON.parse(m));
+
     socket.join(code);
-    socket.emit('room:joined', { code, playerId, state: sanitizeState(state, playerId) });
+    socket.emit('room:joined', { code, playerId, state: sanitizeState(state, playerId), messages });
     socket.to(code).emit('room:updated', sanitizeState(state, ''));
   });
 
@@ -68,28 +69,24 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
     const state = await roomService.getRoomState(code);
     if (!state) return;
 
-    const player = state.players.find((p) => p.id === playerId);
-    if (!player) return;
+    const playerIdx = state.players.findIndex((p) => p.id === playerId);
+    if (playerIdx === -1) return;
 
-    player.connected = false;
-    player.socketId = '';
+    const player = state.players[playerIdx]!;
+    // A newer socket already took over this player slot — don't evict them.
+    if (player.socketId !== socket.id) return;
 
-    if (player.isDrawing && state.status === 'IN_PROGRESS') {
+    // Transfer host before removing
+    if (player.isHost) {
+      const next = state.players.find((_, i) => i !== playerIdx);
+      if (next) { next.isHost = true; state.hostId = next.id; }
+    }
+
+    state.players.splice(playerIdx, 1);
+
+    if (state.players.length === 0) {
       await clearGameJobs(code);
       await roomService.setRoomState(state);
-      await gameService.endRound(code, io);
-      return;
-    }
-
-    if (player.isHost) {
-      const next = state.players.find((p) => p.connected && p.id !== playerId);
-      if (next) { player.isHost = false; next.isHost = true; state.hostId = next.id; }
-    }
-
-    const anyConnected = state.players.some((p) => p.connected);
-    if (!anyConnected) {
-      await clearGameJobs(code);
-      await roomService.deleteRoomState(code);
       return;
     }
 

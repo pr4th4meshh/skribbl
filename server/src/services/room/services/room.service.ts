@@ -27,21 +27,8 @@ export class RoomService {
     const code = await this.generateUniqueCode();
     const room = await this.dao.create(input, hostId, code);
 
-    const hostPlayer: Player = {
-      id: hostId,
-      socketId: '',
-      username: hostUsername,
-      avatar: hostAvatar,
-      score: 0,
-      hasGuessed: false,
-      isDrawing: false,
-      isHost: true,
-      isGuest: false,
-      connected: false,
-    };
-
     const state: RoomState = {
-      id: String(room.id), // int → string at app boundary
+      id: String(room.id),
       code,
       name: room.name,
       hostId,
@@ -51,7 +38,7 @@ export class RoomService {
       drawTime: room.drawTime,
       language: room.language,
       status: 'WAITING',
-      players: [hostPlayer],
+      players: [],  // players join via socket — no pre-add to avoid connected:false ghost
       currentRound: 0,
       currentWord: '',
       currentWordHint: '',

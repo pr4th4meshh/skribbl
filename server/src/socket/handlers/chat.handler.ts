@@ -21,13 +21,10 @@ export function registerChatHandlers(io: Server, socket: AuthSocket) {
 
     if (state.status === 'IN_PROGRESS' && state.currentWord) return;
 
-    io.to(code).emit('game:message', {
-      playerId: player.id,
-      username: player.username,
-      text: text.trim(),
-      isCorrect: false,
-      isSystem: false,
-      timestamp: Date.now(),
-    });
+    const msg = { playerId: player.id, username: player.username, text: text.trim(), isCorrect: false, isSystem: false, timestamp: Date.now() };
+    await redis.rpush(`messages:${code}`, JSON.stringify(msg));
+    await redis.ltrim(`messages:${code}`, -200, -1);
+    await redis.expire(`messages:${code}`, 86400);
+    io.to(code).emit('game:message', msg);
   });
 }

@@ -5,6 +5,7 @@ import { gameService } from '../../services/game/services/game.service';
 import type { AuthSocket } from '../middleware';
 import type { DrawData } from '../../shared/types';
 
+
 const SOCKET_ROOM_KEY = (sid: string) => `socket:room:${sid}`;
 const SOCKET_PID_KEY = (sid: string) => `socket:pid:${sid}`;
 
@@ -19,18 +20,29 @@ async function getContext(socketId: string) {
 
 export function registerGameHandlers(io: Server, socket: AuthSocket) {
   socket.on('game:start', async () => {
-    const ctx = await getContext(socket.id);
-    if (!ctx) return;
-    if (!ctx.player?.isHost) { socket.emit('error', { message: 'Only the host can start the game' }); return; }
-    const ok = await gameService.startGame(ctx.code, io);
-    if (!ok) socket.emit('error', { message: 'Need at least 2 players to start' });
+    try {
+      const ctx = await getContext(socket.id);
+      if (!ctx) { console.error('[game:start] no context for socket', socket.id); return; }
+      if (!ctx.player?.isHost) { socket.emit('error', { message: 'Only the host can start the game' }); return; }
+      console.log('[game:start] starting game for room', ctx.code, 'players:', ctx.state.players.length);
+      const ok = await gameService.startGame(ctx.code, io);
+      if (!ok) socket.emit('error', { message: 'Need at least 2 players to start' });
+    } catch (err) {
+      console.error('[game:start] error:', err);
+      socket.emit('error', { message: 'Failed to start game' });
+    }
   });
 
   socket.on('game:select-word', async ({ word }: { word: string }) => {
-    const ctx = await getContext(socket.id);
-    if (!ctx || !ctx.player?.isDrawing) return;
-    if (!ctx.state.wordChoices.includes(word)) return;
-    await gameService.setWord(ctx.code, word, io);
+    try {
+      const ctx = await getContext(socket.id);
+      if (!ctx) { console.error('[game:select-word] no context for socket', socket.id); return; }
+      if (!ctx.player?.isDrawing) { console.warn('[game:select-word] player is not drawer', ctx.playerId); return; }
+      if (!ctx.state.wordChoices.includes(word)) { console.warn('[game:select-word] word not in choices', word, ctx.state.wordChoices); return; }
+      await gameService.setWord(ctx.code, word, io);
+    } catch (err) {
+      console.error('[game:select-word] error:', err);
+    }
   });
 
   socket.on('game:draw', async (data: DrawData) => {

@@ -17,7 +17,7 @@ model User {
   gamesPlayed Int      @default(0)
   wins        Int      @default(0)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now()) @updatedAt
 
   hostedRooms Room[]      @relation("RoomHost")
   gameScores  GameScore[]
@@ -36,7 +36,7 @@ model Room {
   language   String     @default("english")
   status     RoomStatus @default(WAITING)
   createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
+  updatedAt  DateTime   @default(now()) @updatedAt
 
   games Game[]
 }

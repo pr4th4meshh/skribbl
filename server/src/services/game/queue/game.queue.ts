@@ -15,7 +15,7 @@ export const gameQueue = new Queue<GameJobData>('game', { connection });
 export async function scheduleAutoWord(code: string, words: string[]) {
   await gameQueue.add('auto-word', { type: 'auto-word', code, words }, {
     delay: 10_000,
-    jobId: `auto-word:${code}`,
+    jobId: `autoword-${code}`,
     removeOnComplete: true,
     removeOnFail: true,
   });
@@ -24,7 +24,7 @@ export async function scheduleAutoWord(code: string, words: string[]) {
 export async function scheduleEndRound(code: string, drawTimeMs: number) {
   await gameQueue.add('end-round', { type: 'end-round', code }, {
     delay: drawTimeMs,
-    jobId: `end-round:${code}`,
+    jobId: `endround-${code}`,
     removeOnComplete: true,
     removeOnFail: true,
   });
@@ -33,7 +33,7 @@ export async function scheduleEndRound(code: string, drawTimeMs: number) {
 export async function scheduleReveal(code: string, revealNum: number, delayMs: number) {
   await gameQueue.add('reveal', { type: 'reveal', code, revealNum, maxReveals: 0 }, {
     delay: delayMs,
-    jobId: `reveal:${code}:${revealNum}`,
+    jobId: `reveal-${code}-${revealNum}`,
     removeOnComplete: true,
     removeOnFail: true,
   });
@@ -41,9 +41,9 @@ export async function scheduleReveal(code: string, revealNum: number, delayMs: n
 
 export async function clearGameJobs(code: string): Promise<void> {
   const ids = [
-    `auto-word:${code}`,
-    `end-round:${code}`,
-    ...Array.from({ length: 5 }, (_, i) => `reveal:${code}:${i + 1}`),
+    `autoword-${code}`,
+    `endround-${code}`,
+    ...Array.from({ length: 5 }, (_, i) => `reveal-${code}-${i + 1}`),
   ];
   await Promise.allSettled(
     ids.map(async (id) => {
