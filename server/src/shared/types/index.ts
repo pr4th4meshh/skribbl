@@ -46,6 +46,15 @@ export interface RoomState {
   gameId: string | null;
 }
 
+export interface ChatMessage {
+  playerId: string;
+  username: string;
+  text: string;
+  isCorrect: boolean;
+  isSystem: boolean;
+  timestamp: number;
+}
+
 export interface DrawData {
   type: 'start' | 'move' | 'end';
   x: number;
