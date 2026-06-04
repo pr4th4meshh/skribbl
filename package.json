@@ -1,0 +1,5 @@
+{
+  "name": "skribbl",
+  "private": true,
+  "workspaces": ["client", "server", "shared"]
+}
