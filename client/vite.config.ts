@@ -14,12 +14,16 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@skribbl/shared': path.resolve(__dirname, '../shared/src/index.ts'),
+      'zod': path.resolve(__dirname, '../node_modules/zod'),
     },
   },
   server: {
     port: 3000,
     proxy: {
       '/api': { target: 'http://localhost:6969', changeOrigin: true },
+    },
+    fs: {
+      allow: ['..'],
     },
   },
 })
