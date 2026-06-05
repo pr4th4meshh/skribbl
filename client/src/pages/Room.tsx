@@ -11,6 +11,7 @@ import { GuestJoin } from '@/components/game/GuestJoin'
 import { RoomTopBar } from '@/components/game/RoomTopBar'
 import { WaitingLobby } from '@/components/game/WaitingLobby'
 import { RoundOverlay } from '@/components/game/RoundOverlay'
+import { SelectingWordOverlay } from '@/components/game/SelectingWordOverlay'
 import { GameOverDialog } from '@/components/game/GameOverDialog'
 import { Button } from '@/components/ui/button'
 
@@ -78,9 +79,12 @@ export function Room() {
   }
 
   const currentPlayer = roomState.players.find((p) => p.id === playerId) ?? null
+  const drawer = roomState.players.find((p) => p.isDrawing) ?? null
   const isDrawer = currentPlayer?.isDrawing ?? false
   const isHost = currentPlayer?.isHost ?? false
   const chatDisabled = isDrawer && roomState.status === 'IN_PROGRESS' && !!roomState.currentWordHint
+  const drawerIsSelecting =
+    roomState.status === 'IN_PROGRESS' && !roomState.currentWordHint && !isDrawer && !!drawer
 
   return (
     <div className="h-screen flex flex-col overflow-hidden bg-background">
@@ -116,6 +120,7 @@ export function Room() {
           {roomState.status !== 'WAITING' && (
             <Canvas ref={canvasRef} isDrawer={isDrawer} onDraw={sendDraw} onClear={sendClear} />
           )}
+          {drawerIsSelecting && <SelectingWordOverlay drawerName={drawer!.username} />}
           {roundOver && <RoundOverlay roundOver={roundOver} />}
         </div>
 

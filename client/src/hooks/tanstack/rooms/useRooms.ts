@@ -9,6 +9,5 @@ export function useRooms() {
       const { data } = await api.get<ApiResponse<PublicRoom[]>>('/rooms')
       return data.data
     },
-    refetchInterval: 10_000,
   })
 }
