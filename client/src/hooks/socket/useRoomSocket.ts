@@ -20,7 +20,7 @@ export interface GameEndData {
 export interface RoundOverData {
   word: string
   round: number
-  scores: { id: string; username: string; score: number }[]
+  scores: { id: string; username: string; score: number; roundScore: number }[]
 }
 
 let socket: ClientSocket | null = null
@@ -189,8 +189,12 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
 
       socket.on(SERVER_EVENTS.GAME_ROUND_END, ({ word, scores }) => {
         stopTimer()
-        setRoundOver({ word, round: useGameStore.getState().roomState?.currentRound ?? 0, scores })
         const curr = useGameStore.getState().roomState
+        const roundScores = scores.map((s) => ({
+          ...s,
+          roundScore: s.score - (curr?.players.find((p) => p.id === s.id)?.score ?? 0),
+        }))
+        setRoundOver({ word, round: curr?.currentRound ?? 0, scores: roundScores })
         if (curr) {
           patchRoomState({
             currentWord: word,

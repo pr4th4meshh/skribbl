@@ -25,11 +25,16 @@ export function RoundOverlay({ roundOver }: Props) {
                 i > 0 && 'bg-muted/50',
               )}
             >
-              <span className={cn('font-bold w-4 text-center', i === 0 && 'text-yellow-500')}>
+              <span className={cn('font-bold w-4 text-center shrink-0', i === 0 && 'text-yellow-500')}>
                 {i + 1}
               </span>
-              <span className="flex-1 text-left font-medium">{s.username}</span>
-              <span className="font-semibold text-muted-foreground">{s.score} pts</span>
+              <span className="flex-1 text-left font-medium truncate">{s.username}</span>
+              <span className={cn(
+                'font-semibold tabular-nums shrink-0',
+                s.roundScore > 0 ? 'text-green-600' : 'text-muted-foreground',
+              )}>
+                {s.roundScore > 0 ? `+${s.roundScore}` : '—'}
+              </span>
             </div>
           ))}
         </div>
