@@ -1,6 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { queryClient } from '@/lib/queryClient'
+import { TanstackProvider } from '@/providers/tanstack'
 import { Home } from '@/pages/Home'
 import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
@@ -9,7 +8,7 @@ import { Leaderboard } from '@/pages/Leaderboard'
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
+    <TanstackProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -19,6 +18,6 @@ export default function App() {
           <Route path="/leaderboard" element={<Leaderboard />} />
         </Routes>
       </BrowserRouter>
-    </QueryClientProvider>
+    </TanstackProvider>
   )
 }
