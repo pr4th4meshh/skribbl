@@ -15,7 +15,7 @@ export function Navbar() {
     <header className="border-b bg-background/90 backdrop-blur-sm sticky top-0 z-50">
       <div className="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-1.5 group">
-          <span className="text-xl font-black tracking-tight text-foreground group-hover:text-primary transition-colors">
+          <span className="text-xl font-black tracking-tight text-brand-deep group-hover:text-brand-blue transition-colors">
             skribbl
           </span>
           <span className="text-lg">✏️</span>

@@ -37,7 +37,7 @@ export function RoomTopBar({
     <div className="h-13 border-b flex items-center px-4 gap-3 shrink-0 bg-card">
       <button
         onClick={onLogoClick}
-        className="text-base font-black tracking-tight hover:text-primary transition-colors"
+        className="text-base font-black tracking-tight text-brand-deep hover:text-brand-blue transition-colors"
       >
         skribbl
       </button>
@@ -51,7 +51,7 @@ export function RoomTopBar({
               Round {currentRound}/{totalRounds}
             </span>
             {currentWordHint && (
-              <span className="font-mono text-xl tracking-[0.5em] font-black text-foreground">
+              <span className="font-mono text-lg tracking-[0.4em] font-black px-3 py-0.5 rounded-lg bg-brand-yellow text-brand-deep">
                 {isDrawer ? currentWord : currentWordHint}
               </span>
             )}
@@ -63,7 +63,7 @@ export function RoomTopBar({
         <div className={cn(
           'font-bold text-base tabular-nums min-w-[3ch] text-right transition-colors',
           timerCritical && 'text-red-500',
-          timerWarning && 'text-yellow-500',
+          timerWarning && 'text-brand-amber',
           !timerCritical && !timerWarning && 'text-muted-foreground',
         )}>
           {timer}s

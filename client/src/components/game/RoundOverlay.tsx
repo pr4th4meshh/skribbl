@@ -22,11 +22,11 @@ export function RoundOverlay({ roundOver }: Props) {
               key={s.id}
               className={cn(
                 'flex items-center gap-3 text-sm px-3 py-2 rounded-lg',
-                i === 0 && 'bg-yellow-50 border border-yellow-200',
+                i === 0 && 'bg-brand-yellow/20 border border-brand-amber/40',
                 i > 0 && 'bg-muted/50',
               )}
             >
-              <span className={cn('font-bold w-4 text-center shrink-0', i === 0 && 'text-yellow-500')}>
+              <span className={cn('font-bold w-4 text-center shrink-0', i === 0 && 'text-brand-amber')}>
                 {i + 1}
               </span>
               <PlayerAvatar username={s.username} size={24} />

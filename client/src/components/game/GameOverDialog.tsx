@@ -18,7 +18,7 @@ export function GameOverDialog({ gameOver, onClose }: Props) {
         </DialogHeader>
         {gameOver && (
           <div className="space-y-4 mt-1">
-            <div className="text-center py-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+            <div className="text-center py-4 bg-brand-yellow/25 border border-brand-amber/40 rounded-xl">
               <PlayerAvatar username={gameOver.winner.username} size={56} className="mx-auto mb-2" />
               <p className="font-bold text-lg">{gameOver.winner.username}</p>
               <p className="text-sm text-muted-foreground">{gameOver.winner.score} pts</p>
@@ -28,7 +28,7 @@ export function GameOverDialog({ gameOver, onClose }: Props) {
                 <div key={s.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-lg hover:bg-muted/50">
                   <span className={cn(
                     'font-bold w-5 text-center text-xs shrink-0',
-                    i === 0 && 'text-yellow-500',
+                    i === 0 && 'text-brand-amber',
                     i === 1 && 'text-slate-400',
                     i === 2 && 'text-amber-600',
                     i > 2 && 'text-muted-foreground',
