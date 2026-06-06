@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import type { RoundOverData } from '@/hooks/socket/useRoomSocket'
+import { PlayerAvatar } from '@/components/game/PlayerAvatar'
 
 interface Props {
   roundOver: RoundOverData
@@ -28,6 +29,7 @@ export function RoundOverlay({ roundOver }: Props) {
               <span className={cn('font-bold w-4 text-center shrink-0', i === 0 && 'text-yellow-500')}>
                 {i + 1}
               </span>
+              <PlayerAvatar username={s.username} size={24} />
               <span className="flex-1 text-left font-medium truncate">{s.username}</span>
               <span className={cn(
                 'font-semibold tabular-nums shrink-0',

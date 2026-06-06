@@ -1,5 +1,5 @@
 import type { Player } from '@/types'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { PlayerAvatar } from '@/components/game/PlayerAvatar'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -35,19 +35,14 @@ export function PlayerList({ players, currentPlayerId }: Props) {
             )}>
               {rank + 1}
             </span>
+
             <div className="relative shrink-0">
-              <Avatar className="h-7 w-7 text-xs">
-                <AvatarFallback className={cn(
-                  'text-xs font-semibold',
-                  player.id === currentPlayerId && 'bg-primary/15 text-primary',
-                )}>
-                  {player.username[0]?.toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
+              <PlayerAvatar username={player.username} size={28} />
               {player.isDrawing && (
                 <span className="absolute -bottom-0.5 -right-0.5 text-[9px] leading-none">✏️</span>
               )}
             </div>
+
             <div className="flex-1 min-w-0">
               <p className={cn('text-xs font-medium truncate leading-tight', player.id === currentPlayerId && 'text-primary')}>
                 {player.username}
@@ -55,6 +50,7 @@ export function PlayerList({ players, currentPlayerId }: Props) {
               </p>
               <p className="text-[11px] text-muted-foreground leading-tight">{player.score} pts</p>
             </div>
+
             {player.hasGuessed && !player.isDrawing && (
               <span className="text-green-500 text-xs shrink-0">✓</span>
             )}

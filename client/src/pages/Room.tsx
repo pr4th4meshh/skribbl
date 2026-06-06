@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGameStore } from '@/stores/game.store'
@@ -26,6 +26,7 @@ export function Room() {
 
   const canvasRef = useRef<CanvasHandle>(null)
   const roomCode = code?.toUpperCase() ?? ''
+  const [showGuestJoin, setShowGuestJoin] = useState(!user)
 
   const {
     connect,
@@ -49,10 +50,13 @@ export function Room() {
     return () => disconnect()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!user) {
+  if (showGuestJoin && !user) {
     return (
       <GuestJoin
-        onJoin={(username) => connect(username)}
+        onJoin={(username) => {
+          setShowGuestJoin(false)
+          connect(username)
+        }}
         onLoginRedirect={() => navigate('/login')}
       />
     )
