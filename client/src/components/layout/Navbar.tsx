@@ -18,7 +18,6 @@ export function Navbar() {
           <span className="text-xl font-black tracking-tight text-brand-deep group-hover:text-brand-blue transition-colors">
             skribbl
           </span>
-          <span className="text-lg">✏️</span>
         </Link>
         <nav className="flex items-center gap-1">
           <Link to="/leaderboard">

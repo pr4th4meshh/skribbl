@@ -21,7 +21,6 @@ export function GuestJoin({ onJoin, onLoginRedirect }: Props) {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <span className="text-3xl font-black tracking-tight">skribbl</span>
-          <span className="text-2xl ml-1.5">✏️</span>
           <p className="text-sm text-muted-foreground mt-2">Join as guest to play</p>
         </div>
         <div className="bg-card border border-border rounded-2xl p-6 shadow-sm space-y-4">

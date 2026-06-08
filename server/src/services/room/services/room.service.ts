@@ -38,7 +38,7 @@ export class RoomService {
       drawTime: room.drawTime,
       language: room.language,
       status: 'WAITING',
-      players: [],  // players join via socket — no pre-add to avoid connected:false ghost
+      players: [],
       currentRound: 0,
       currentWord: '',
       currentWordHint: '',
@@ -52,6 +52,36 @@ export class RoomService {
 
     await this.dao.setState(state);
     return { code, roomId: String(room.id) };
+  }
+
+  async createGuestRoom(input: CreateRoomInput, hostUsername: string) {
+    const code = await this.generateUniqueCode();
+
+    const state: RoomState = {
+      id: '',  // no DB record — guards in game service skip DB ops for guest rooms
+      code,
+      name: input.name,
+      hostId: '',
+      isPrivate: input.isPrivate,
+      maxPlayers: input.maxPlayers,
+      totalRounds: input.rounds,
+      drawTime: input.drawTime,
+      language: input.language,
+      status: 'WAITING',
+      players: [],
+      currentRound: 0,
+      currentWord: '',
+      currentWordHint: '',
+      wordChoices: [],
+      drawerIndex: -1,
+      drawerOrder: [],
+      roundStartedAt: 0,
+      revealedIndices: [],
+      gameId: null,
+    };
+
+    await this.dao.setState(state);
+    return { code, roomId: '' };
   }
 
   async listPublicRooms() {

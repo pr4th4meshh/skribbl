@@ -39,20 +39,20 @@ export function PlayerList({ players, currentPlayerId }: Props) {
             <div className="relative shrink-0">
               <PlayerAvatar username={player.username} size={28} />
               {player.isDrawing && (
-                <span className="absolute -bottom-0.5 -right-0.5 text-[9px] leading-none">✏️</span>
+                <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-brand-blue border-2 border-card" />
               )}
             </div>
 
             <div className="flex-1 min-w-0">
               <p className={cn('text-xs font-medium truncate leading-tight', player.id === currentPlayerId && 'text-primary')}>
                 {player.username}
-                {player.isHost && <span className="text-muted-foreground font-normal ml-1">★</span>}
+                {player.isHost && <span className="text-brand-amber font-normal ml-1 text-[10px]">HOST</span>}
               </p>
               <p className="text-[11px] text-muted-foreground leading-tight">{player.score} pts</p>
             </div>
 
             {player.hasGuessed && !player.isDrawing && (
-              <span className="text-green-500 text-xs shrink-0">✓</span>
+              <span className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
             )}
           </div>
         ))}

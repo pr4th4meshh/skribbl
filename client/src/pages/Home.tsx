@@ -21,13 +21,16 @@ export function Home() {
   const { data: rooms, isLoading } = useRooms()
 
   const joinForm = useForm<JoinRoomForm>({ resolver: zodResolver(joinRoomSchema) })
-  const createForm = useForm<CreateRoomForm>({
+  const createForm = useForm<CreateRoomForm & { guestUsername?: string }>({
     resolver: zodResolver(createRoomSchema),
     defaultValues: { name: '', isPrivate: false as boolean, maxPlayers: 8, rounds: 3, drawTime: 80 },
   })
 
   const createMutation = useCreateRoom({
-    onSuccess: ({ code }) => navigate(`/room/${code}`),
+    onSuccess: ({ code }) => {
+      const guestUsername = createForm.getValues('guestUsername')
+      navigate(`/room/${code}`, { state: { guestUsername: user ? undefined : guestUsername } })
+    },
   })
 
   return (
@@ -85,16 +88,10 @@ export function Home() {
           <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col justify-between">
             <div>
               <h2 className="font-semibold text-base mb-1">Create a room</h2>
-              <p className="text-sm text-muted-foreground mb-4">
-                {user ? 'Set up a game and invite friends.' : 'Sign in to host your own room.'}
-              </p>
+              <p className="text-sm text-muted-foreground mb-4">Set up a game and invite friends.</p>
             </div>
-            <Button
-              onClick={() => (user ? setShowCreate(true) : navigate('/login'))}
-              className="w-full"
-              variant={user ? 'default' : 'outline'}
-            >
-              {user ? 'Create room' : 'Log in to create'}
+            <Button onClick={() => setShowCreate(true)} className="w-full">
+              Create room
             </Button>
           </div>
         </div>
@@ -120,7 +117,6 @@ export function Home() {
 
           {rooms && rooms.length === 0 && (
             <div className="text-center py-12 text-muted-foreground">
-              <p className="text-4xl mb-3">🎨</p>
               <p className="font-medium">No rooms open right now</p>
               <p className="text-sm mt-1">Be the first to create one!</p>
             </div>
@@ -164,9 +160,15 @@ export function Home() {
             <DialogTitle>Create a room</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={createForm.handleSubmit((d) => createMutation.mutate(d))}
+            onSubmit={createForm.handleSubmit((d) => createMutation.mutate({ ...d, guestUsername: user ? undefined : d.guestUsername }))}
             className="space-y-4 mt-1"
           >
+            {!user && (
+              <div className="space-y-1.5">
+                <Label>Your username</Label>
+                <Input {...createForm.register('guestUsername')} placeholder="Pick a cool name…" maxLength={20} />
+              </div>
+            )}
             <div className="space-y-1.5">
               <Label>Room name</Label>
               <Input {...createForm.register('name')} placeholder="Friday night drawing club" />

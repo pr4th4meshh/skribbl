@@ -33,9 +33,8 @@ export function Login() {
       <div className="w-full max-w-sm">
         {/* Brand */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-1.5 mb-2">
+          <Link to="/" className="inline-block mb-2">
             <span className="text-3xl font-black tracking-tight text-foreground">skribbl</span>
-            <span className="text-2xl">✏️</span>
           </Link>
           <p className="text-sm text-muted-foreground">Welcome back — let's draw something</p>
         </div>

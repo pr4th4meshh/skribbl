@@ -46,7 +46,7 @@ export function Chat({ messages, onSend, disabled }: Props) {
             if (msg.isCorrect) {
               return (
                 <div key={i} className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-2.5 py-1.5 text-xs font-medium">
-                  🎉 <span className="font-semibold">{msg.username}</span> guessed correctly!
+                  <span className="font-semibold">{msg.username}</span> guessed correctly!
                 </div>
               )
             }
@@ -71,7 +71,7 @@ export function Chat({ messages, onSend, disabled }: Props) {
           className="flex-1 text-sm h-8"
         />
         <Button type="submit" size="sm" className="h-8 px-3" disabled={disabled || !text.trim()}>
-          →
+          Send
         </Button>
       </form>
     </div>

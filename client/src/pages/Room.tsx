@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGameStore } from '@/stores/game.store'
 import { useRoomSocket } from '@/hooks/socket/useRoomSocket'
@@ -18,7 +18,9 @@ import { Button } from '@/components/ui/button'
 export function Room() {
   const { code } = useParams<{ code: string }>()
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useAuthStore((s) => s.user)
+  const locationGuestUsername = (location.state as { guestUsername?: string } | null)?.guestUsername
   const roomState = useGameStore((s) => s.roomState)
   const messages = useGameStore((s) => s.messages)
   const playerId = useGameStore((s) => s.playerId)
@@ -26,7 +28,8 @@ export function Room() {
 
   const canvasRef = useRef<CanvasHandle>(null)
   const roomCode = code?.toUpperCase() ?? ''
-  const [showGuestJoin, setShowGuestJoin] = useState(!user)
+  // Skip GuestJoin if guest already provided username during room creation
+  const [showGuestJoin, setShowGuestJoin] = useState(!user && !locationGuestUsername)
 
   const {
     connect,
@@ -47,6 +50,7 @@ export function Room() {
   useEffect(() => {
     reset()
     if (user) connect()
+    else if (locationGuestUsername) connect(locationGuestUsername)
     return () => disconnect()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -66,7 +70,6 @@ export function Room() {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="text-center space-y-4">
-          <p className="text-4xl">😕</p>
           <p className="text-lg font-semibold">{error}</p>
           <Button onClick={() => navigate('/')}>Back to home</Button>
         </div>

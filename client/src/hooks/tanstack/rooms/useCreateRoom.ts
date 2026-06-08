@@ -9,6 +9,7 @@ interface CreateRoomVars {
   rounds?: number
   drawTime?: number
   language?: string
+  guestUsername?: string
 }
 
 interface CreateRoomResult {

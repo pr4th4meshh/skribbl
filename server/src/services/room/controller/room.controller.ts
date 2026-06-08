@@ -10,8 +10,13 @@ export class RoomController {
   create = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const input = createRoomSchema.parse(req.body);
-      const { userId, username } = req.user!;
-      success(res, await this.service.createRoom(input, userId, username, null), 201);
+      if (req.user) {
+        success(res, await this.service.createRoom(input, req.user.userId, req.user.username, null), 201);
+      } else {
+        const guestUsername = input.guestUsername?.trim();
+        if (!guestUsername) { failure(res, 'Username required for guest rooms', 400); return; }
+        success(res, await this.service.createGuestRoom(input, guestUsername), 201);
+      }
     } catch (err) {
       next(err);
     }

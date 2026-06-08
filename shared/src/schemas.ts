@@ -84,6 +84,7 @@ export const createRoomSchema = z.object({
   rounds: z.number().int().min(1).max(10).default(3),
   drawTime: z.number().int().min(30).max(180).default(80),
   language: z.enum(['english']).default('english'),
+  guestUsername: z.string().min(1).max(20).optional(),
 });
 
 // inferred ts types 

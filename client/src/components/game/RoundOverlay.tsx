@@ -10,7 +10,6 @@ export function RoundOverlay({ roundOver }: Props) {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-background/96 z-10 rounded-md backdrop-blur-sm">
       <div className="text-center px-8 max-w-sm w-full">
-        <p className="text-4xl mb-3">🎨</p>
         <p className="text-2xl font-black mb-1">Round {roundOver.round}</p>
         <p className="text-muted-foreground text-sm mb-5">
           The word was{' '}

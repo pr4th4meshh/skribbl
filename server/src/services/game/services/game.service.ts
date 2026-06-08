@@ -28,16 +28,17 @@ export class GameService {
 
     if (state.players.length < 2) return false;
 
-    const game = await this.dao.createGame(state.id);
-
     state.status = 'IN_PROGRESS';
-    state.gameId = String(game.id); // int → string at app boundary
+    if (state.id) {
+      const game = await this.dao.createGame(state.id);
+      state.gameId = String(game.id);
+    }
     state.currentRound = 1;
     state.drawerOrder = state.players.map((p) => p.id);
     state.drawerIndex = 0;
 
     await roomService.setRoomState(state);
-    await roomDAO.updateStatus(code, 'IN_PROGRESS');
+    if (state.id) await roomDAO.updateStatus(code, 'IN_PROGRESS');
 
     io.to(code).emit('game:started', { round: 1, totalRounds: state.totalRounds });
     await this.beginRound(code, io);
@@ -217,7 +218,7 @@ export class GameService {
     const sorted = [...state.players].sort((a, b) => b.score - a.score);
     const winner = sorted[0]!;
 
-    if (state.gameId) {
+    if (state.gameId && state.id) {
       await this.dao.endGame(state.gameId);
       await this.dao.persistScores(state, winner.id);
       await roomDAO.updateStatusById(state.id, 'ENDED');

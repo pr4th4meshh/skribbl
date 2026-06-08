@@ -6,7 +6,6 @@ export function SelectingWordOverlay({ drawerName }: Props) {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10 rounded-md backdrop-blur-sm">
       <div className="text-center space-y-3">
-        <p className="text-4xl">🎨</p>
         <p className="text-lg font-semibold">
           <span className="text-primary">{drawerName}</span> is choosing a word
         </p>
