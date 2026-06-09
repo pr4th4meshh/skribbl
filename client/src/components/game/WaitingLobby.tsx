@@ -15,9 +15,9 @@ export function WaitingLobby({ roomCode, isHost, playerCount, maxPlayers }: Prop
         </p>
       </div>
       {isHost && (
-        <div className="bg-brand-yellow rounded-2xl px-8 py-5">
+        <div className="bg-brand-yellow rounded-2xl px-6 sm:px-8 py-4 sm:py-5">
           <p className="text-xs text-brand-deep/70 mb-1.5 tracking-wider uppercase font-semibold">Room code</p>
-          <p className="text-4xl font-black font-mono tracking-[0.3em] text-brand-deep">{roomCode}</p>
+          <p className="text-2xl sm:text-4xl font-black font-mono tracking-[0.2em] sm:tracking-[0.3em] text-brand-deep">{roomCode}</p>
           <p className="text-xs text-brand-deep/60 mt-2">Share with friends</p>
         </div>
       )}

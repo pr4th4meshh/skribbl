@@ -171,13 +171,13 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
         />
       </div>
       {isDrawer && (
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="flex gap-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex gap-0.5 sm:gap-1 flex-wrap">
             {COLORS.map((c) => (
               <button
                 key={c}
                 onClick={() => { setColor(c); setTool('pen') }}
-                className="w-6 h-6 rounded-full border-2 transition-transform hover:scale-110"
+                className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-transform hover:scale-110"
                 style={{
                   background: c,
                   borderColor: color === c && tool === 'pen' ? '#6366f1' : '#d1d5db',
@@ -191,7 +191,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
               <button
                 key={s}
                 onClick={() => setSize(s)}
-                className="w-8 h-8 rounded flex items-center justify-center border transition-colors hover:bg-muted"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center border transition-colors hover:bg-muted"
                 style={{ borderColor: size === s ? '#6366f1' : '#d1d5db' }}
               >
                 <div className="rounded-full bg-foreground" style={{ width: s, height: s }} />
@@ -201,11 +201,14 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
           <Button
             variant={tool === 'eraser' ? 'secondary' : 'outline'}
             size="sm"
+            className="h-7 sm:h-8 px-2 sm:px-3 text-xs"
             onClick={() => setTool(tool === 'eraser' ? 'pen' : 'eraser')}
           >
             Eraser
           </Button>
-          <Button variant="outline" size="sm" onClick={onClear}>Clear</Button>
+          <Button variant="outline" size="sm" className="h-7 sm:h-8 px-2 sm:px-3 text-xs" onClick={onClear}>
+            Clear
+          </Button>
         </div>
       )}
     </div>

@@ -39,7 +39,7 @@ export function Home() {
 
       <div className="max-w-4xl mx-auto px-5 py-12 space-y-12">
         {/* Hero */}
-        <div className="relative rounded-3xl overflow-hidden py-24 text-center">
+        <div className="relative rounded-3xl overflow-hidden py-16 sm:py-24 text-center">
           <div
             className="absolute inset-0"
             style={{
@@ -54,10 +54,10 @@ export function Home() {
             }}
           />
           <div className="relative" style={{ isolation: 'isolate' }}>
-            <h1 className="text-8xl font-black tracking-tighter" style={{ color: '#ffffff', mixBlendMode: 'difference' }}>
+            <h1 className="text-5xl sm:text-8xl font-black tracking-tighter" style={{ color: '#ffffff', mixBlendMode: 'difference' }}>
               skribbl
             </h1>
-            <p className="text-xl font-semibold mt-3" style={{ color: '#ffffff', mixBlendMode: 'difference' }}>
+            <p className="text-base sm:text-xl font-semibold mt-3" style={{ color: '#ffffff', mixBlendMode: 'difference' }}>
               Draw. Guess. Have fun.
             </p>
           </div>
@@ -176,7 +176,7 @@ export function Home() {
                 <p className="text-destructive text-xs">{createForm.formState.errors.name.message}</p>
               )}
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Max players</Label>
                 <Input type="number" {...createForm.register('maxPlayers', { valueAsNumber: true })} min={2} max={12} />

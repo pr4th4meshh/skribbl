@@ -11,13 +11,13 @@ export function PlayerList({ players, currentPlayerId }: Props) {
   const sorted = [...players].sort((a, b) => b.score - a.score)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <div className="px-3 py-2 border-b shrink-0">
         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
           Players · {players.length}
         </p>
       </div>
-      <div className="flex flex-col gap-0.5 p-2 overflow-y-auto">
+      <div className="flex flex-col gap-0.5 p-2 overflow-y-auto flex-1 min-h-0">
         {sorted.map((player, rank) => (
           <div
             key={player.id}

@@ -14,6 +14,7 @@ import { RoundOverlay } from '@/components/game/RoundOverlay'
 import { SelectingWordOverlay } from '@/components/game/SelectingWordOverlay'
 import { GameOverDialog } from '@/components/game/GameOverDialog'
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 export function Room() {
   const { code } = useParams<{ code: string }>()
@@ -28,8 +29,8 @@ export function Room() {
 
   const canvasRef = useRef<CanvasHandle>(null)
   const roomCode = code?.toUpperCase() ?? ''
-  // Skip GuestJoin if guest already provided username during room creation
   const [showGuestJoin, setShowGuestJoin] = useState(!user && !locationGuestUsername)
+  const [mobileTab, setMobileTab] = useState<'players' | 'chat'>('chat')
 
   const {
     connect,
@@ -94,7 +95,7 @@ export function Room() {
     roomState.status === 'IN_PROGRESS' && !roomState.currentWordHint && !isDrawer && !!drawer
 
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="h-dvh flex flex-col overflow-hidden bg-background">
       <RoomTopBar
         roomCode={roomCode}
         status={roomState.status}
@@ -110,12 +111,15 @@ export function Room() {
         onLogoClick={() => navigate('/')}
       />
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="w-44 border-r shrink-0 overflow-hidden">
+      {/* Main content: 3-col on desktop, canvas-only on mobile */}
+      <div className="flex flex-1 overflow-hidden min-h-0">
+        {/* Players — desktop sidebar */}
+        <div className="hidden md:flex w-44 border-r shrink-0 overflow-hidden flex-col">
           <PlayerList players={roomState.players} currentPlayerId={playerId} />
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden p-2 gap-2 relative">
+        {/* Canvas / waiting area */}
+        <div className="flex-1 flex flex-col overflow-hidden p-2 gap-2 relative min-h-0">
           {roomState.status === 'WAITING' && (
             <WaitingLobby
               roomCode={roomCode}
@@ -131,12 +135,52 @@ export function Room() {
           {roundOver && <RoundOverlay roundOver={roundOver} />}
         </div>
 
-        <div className="w-60 border-l flex flex-col shrink-0 min-h-0 overflow-hidden">
+        {/* Chat — desktop sidebar */}
+        <div className="hidden md:flex w-60 border-l flex-col shrink-0 min-h-0 overflow-hidden">
           <Chat
             messages={messages}
             onSend={(text) => sendMessage(text, isDrawer)}
             disabled={chatDisabled}
           />
+        </div>
+      </div>
+
+      {/* Mobile bottom panel: tab bar + Players or Chat */}
+      <div className="md:hidden flex flex-col border-t shrink-0">
+        <div className="flex">
+          <button
+            className={cn(
+              'flex-1 py-2 text-xs font-semibold transition-colors',
+              mobileTab === 'players'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground',
+            )}
+            onClick={() => setMobileTab('players')}
+          >
+            Players · {roomState.players.length}
+          </button>
+          <button
+            className={cn(
+              'flex-1 py-2 text-xs font-semibold transition-colors',
+              mobileTab === 'chat'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-muted-foreground',
+            )}
+            onClick={() => setMobileTab('chat')}
+          >
+            Chat
+          </button>
+        </div>
+        <div className="h-44 overflow-hidden">
+          {mobileTab === 'players' ? (
+            <PlayerList players={roomState.players} currentPlayerId={playerId} />
+          ) : (
+            <Chat
+              messages={messages}
+              onSend={(text) => sendMessage(text, isDrawer)}
+              disabled={chatDisabled}
+            />
+          )}
         </div>
       </div>
 
