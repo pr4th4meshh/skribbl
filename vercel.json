@@ -1,0 +1,10 @@
+{
+    "buildCommand": "npm install && cd client && npm run build",
+    "outputDirectory": "client/dist",
+    "rewrites": [
+      {
+        "source": "/api/v1/:path*",
+        "destination": "https://skribbl-xxxx.onrender.com/api/v1/:path*"
+      } 
+    ]
+  } 
