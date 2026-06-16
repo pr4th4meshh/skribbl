@@ -1,10 +1,11 @@
-{
-    "buildCommand": "npm install && cd client && npm run build",
+  {
+    "installCommand": "npm install",
+    "buildCommand": "npm run build -w client",
     "outputDirectory": "client/dist",
     "rewrites": [
       {
         "source": "/api/v1/:path*",
         "destination": "https://skribbl-syip.onrender.com/api/v1/:path*"
-      } 
+      }
     ]
-  } 
+  }
