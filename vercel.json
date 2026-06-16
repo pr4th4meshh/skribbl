@@ -4,7 +4,7 @@
     "rewrites": [
       {
         "source": "/api/v1/:path*",
-        "destination": "https://skribbl-xxxx.onrender.com/api/v1/:path*"
+        "destination": "https://skribbl-syip.onrender.com/api/v1/:path*"
       } 
     ]
   } 
