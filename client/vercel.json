@@ -1,8 +1,1 @@
-{
-  "rewrites": [
-    {
-      "source": "/api/v1/:path*",
-      "destination": "https://skribbl-sypi.onrender.com/api/v1/:path*"
-    }
-  ]
-}
+{}
