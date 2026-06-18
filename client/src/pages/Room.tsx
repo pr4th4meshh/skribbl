@@ -44,6 +44,7 @@ export function Room() {
     startGame,
     sendDraw,
     sendClear,
+    sendUndo,
     selectWord,
     sendMessage,
   } = useRoomSocket(roomCode, canvasRef)
@@ -129,7 +130,7 @@ export function Room() {
             />
           )}
           {roomState.status !== 'WAITING' && (
-            <Canvas ref={canvasRef} isDrawer={isDrawer} onDraw={sendDraw} onClear={sendClear} />
+            <Canvas ref={canvasRef} isDrawer={isDrawer} onDraw={sendDraw} onClear={sendClear} onUndo={sendUndo} />
           )}
           {drawerIsSelecting && <SelectingWordOverlay drawerName={drawer!.username} />}
           {roundOver && <RoundOverlay roundOver={roundOver} />}

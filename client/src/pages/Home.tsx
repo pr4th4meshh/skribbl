@@ -142,7 +142,7 @@ export function Home() {
                     <Button
                       size="sm"
                       onClick={(e) => { e.stopPropagation(); navigate(`/room/${room.code}`) }}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      variant="default"
                     >
                       Join
                     </Button>

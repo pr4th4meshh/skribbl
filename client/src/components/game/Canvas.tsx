@@ -1,7 +1,8 @@
 import { useRef, useEffect, useImperativeHandle, forwardRef, useState } from 'react'
 import type { DrawData } from '@/types'
 import { Button } from '@/components/ui/button'
-import { fillStroke, type ActiveStroke } from '@/utils/canvas'
+import { PaintBucket, Eraser, Undo2 } from 'lucide-react'
+import { fillStroke, floodFill, type ActiveStroke } from '@/utils/canvas'
 
 export interface CanvasHandle {
   applyDraw: (data: DrawData) => void
@@ -13,22 +14,29 @@ interface Props {
   isDrawer: boolean
   onDraw: (data: DrawData) => void
   onClear: () => void
+  onUndo?: (remainingStrokes: DrawData[]) => void
 }
 
 const CANVAS_W = 800
 const CANVAS_H = 600
 const COLORS = ['#000000', '#ffffff', '#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#78716c']
-const SIZES = [3, 8, 16]
+const SIZES = [3, 8, 16] as const
+const SIZE_LABELS = ['Thin', 'Med', 'Thick'] as const
 
-const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDraw, onClear }, ref) {
+const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDraw, onClear, onUndo }, ref) {
   const displayRef = useRef<HTMLCanvasElement>(null)
   const committedRef = useRef<HTMLCanvasElement | null>(null)
   const activeStroke = useRef<ActiveStroke | null>(null)
   const isPointerDown = useRef(false)
 
+  // Undo history: each entry is one complete stroke (array of DrawData events)
+  const strokeHistory = useRef<DrawData[][]>([])
+  const currentStrokeEvents = useRef<DrawData[]>([])
+  const [canUndo, setCanUndo] = useState(false)
+
   const [color, setColor] = useState('#000000')
-  const [size, setSize] = useState(SIZES[1]!)
-  const [tool, setTool] = useState<'pen' | 'eraser'>('pen')
+  const [size, setSize] = useState<number>(SIZES[0])
+  const [tool, setTool] = useState<'pen' | 'eraser' | 'fill'>('pen')
 
   function initCommitted() {
     const offscreen = document.createElement('canvas')
@@ -62,9 +70,64 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
     activeStroke.current = null
   }
 
+  function replayOntoCommitted(strokes: DrawData[]) {
+    initCommitted()
+    const committed = committedRef.current!
+    const ctx = committed.getContext('2d')!
+    let batch: ActiveStroke | null = null
+    for (const data of strokes) {
+      const x = data.x * CANVAS_W
+      const y = data.y * CANVAS_H
+      if (data.tool === 'fill') {
+        if (data.type === 'start') floodFill(committed, x, y, data.color)
+        continue
+      }
+      if (data.type === 'start') {
+        batch = { points: [[x, y]], color: data.color, size: data.size, tool: data.tool as 'pen' | 'eraser' }
+      } else if (data.type === 'move' && batch) {
+        batch.points.push([x, y])
+      } else if (data.type === 'end' && batch) {
+        batch.points.push([x, y])
+        fillStroke(ctx, batch.points, batch.color, batch.size, batch.tool)
+        batch = null
+      }
+    }
+  }
+
+  function pushStroke(events: DrawData[]) {
+    if (!events.length) return
+    strokeHistory.current.push([...events])
+    setCanUndo(true)
+  }
+
+  function clearHistory() {
+    strokeHistory.current = []
+    currentStrokeEvents.current = []
+    setCanUndo(false)
+  }
+
+  function handleUndo() {
+    if (!strokeHistory.current.length) return
+    strokeHistory.current.pop()
+    setCanUndo(strokeHistory.current.length > 0)
+    activeStroke.current = null
+    const remaining = strokeHistory.current.flat()
+    replayOntoCommitted(remaining)
+    compositeToDisplay()
+    onUndo?.(remaining)
+  }
+
   function applyData(data: DrawData) {
     const x = data.x * CANVAS_W
     const y = data.y * CANVAS_H
+
+    if (data.tool === 'fill') {
+      if (data.type === 'start') {
+        floodFill(committedRef.current!, x, y, data.color)
+        compositeToDisplay()
+      }
+      return
+    }
 
     if (data.type === 'start') {
       activeStroke.current = { points: [[x, y]], color: data.color, size: data.size, tool: data.tool as 'pen' | 'eraser' }
@@ -88,6 +151,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
     applyDraw: applyData,
     clearCanvas: () => {
       activeStroke.current = null
+      clearHistory()
       const committed = committedRef.current
       if (committed) {
         const ctx = committed.getContext('2d')!
@@ -99,24 +163,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
     },
     replayStrokes: (strokes) => {
       activeStroke.current = null
-      initCommitted()
-      const committed = committedRef.current!
-      const ctx = committed.getContext('2d')!
-
-      let batch: ActiveStroke | null = null
-      for (const data of strokes) {
-        const x = data.x * CANVAS_W
-        const y = data.y * CANVAS_H
-        if (data.type === 'start') {
-          batch = { points: [[x, y]], color: data.color, size: data.size, tool: data.tool as 'pen' | 'eraser' }
-        } else if (data.type === 'move' && batch) {
-          batch.points.push([x, y])
-        } else if (data.type === 'end' && batch) {
-          batch.points.push([x, y])
-          fillStroke(ctx, batch.points, batch.color, batch.size, batch.tool)
-          batch = null
-        }
-      }
+      replayOntoCommitted(strokes)
       compositeToDisplay()
     },
   }))
@@ -130,30 +177,50 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
     }
   }
 
-  function emitAndApply(type: DrawData['type'], e: React.PointerEvent<HTMLCanvasElement>) {
+  function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!isDrawer) return
     const { x, y } = getRelPos(e)
-    const data: DrawData = { type, x, y, color: tool === 'eraser' ? '#ffffff' : color, size, tool }
+
+    if (tool === 'fill') {
+      const data: DrawData = { type: 'start', x, y, color, size, tool: 'fill' }
+      onDraw(data)
+      applyData(data)
+      pushStroke([data])
+      return
+    }
+
+    displayRef.current?.setPointerCapture(e.pointerId)
+    isPointerDown.current = true
+    const data: DrawData = { type: 'start', x, y, color: tool === 'eraser' ? '#ffffff' : color, size, tool }
+    currentStrokeEvents.current = [data]
     onDraw(data)
     applyData(data)
   }
 
-  function onPointerDown(e: React.PointerEvent<HTMLCanvasElement>) {
-    if (!isDrawer) return
-    displayRef.current?.setPointerCapture(e.pointerId)
-    isPointerDown.current = true
-    emitAndApply('start', e)
-  }
-
   function onPointerMove(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!isDrawer || !isPointerDown.current) return
-    emitAndApply('move', e)
+    const { x, y } = getRelPos(e)
+    const data: DrawData = { type: 'move', x, y, color: tool === 'eraser' ? '#ffffff' : color, size, tool }
+    currentStrokeEvents.current.push(data)
+    onDraw(data)
+    applyData(data)
   }
 
   function onPointerUp(e: React.PointerEvent<HTMLCanvasElement>) {
     if (!isDrawer || !isPointerDown.current) return
     isPointerDown.current = false
-    emitAndApply('end', e)
+    const { x, y } = getRelPos(e)
+    const data: DrawData = { type: 'end', x, y, color: tool === 'eraser' ? '#ffffff' : color, size, tool }
+    currentStrokeEvents.current.push(data)
+    pushStroke(currentStrokeEvents.current)
+    currentStrokeEvents.current = []
+    onDraw(data)
+    applyData(data)
   }
+
+  const cursor = !isDrawer ? 'default' : tool === 'eraser' ? 'cell' : 'crosshair'
+  const fillActive = tool === 'fill'
+  const eraserActive = tool === 'eraser'
 
   return (
     <div className="flex flex-col gap-2 h-full">
@@ -163,7 +230,7 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
           width={CANVAS_W}
           height={CANVAS_H}
           className="w-full h-full"
-          style={{ cursor: isDrawer ? (tool === 'eraser' ? 'cell' : 'crosshair') : 'default', touchAction: 'none' }}
+          style={{ cursor, touchAction: 'none' }}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -172,43 +239,79 @@ const Canvas = forwardRef<CanvasHandle, Props>(function Canvas({ isDrawer, onDra
       </div>
       {isDrawer && (
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Color palette */}
           <div className="flex gap-0.5 sm:gap-1 flex-wrap">
             {COLORS.map((c) => (
               <button
                 key={c}
-                onClick={() => { setColor(c); setTool('pen') }}
+                onClick={() => {
+                  setColor(c)
+                  // keep fill active when changing color in fill mode
+                  if (tool !== 'fill') setTool('pen')
+                }}
                 className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border-2 transition-transform hover:scale-110"
                 style={{
                   background: c,
-                  borderColor: color === c && tool === 'pen' ? '#6366f1' : '#d1d5db',
-                  transform: color === c && tool === 'pen' ? 'scale(1.15)' : undefined,
+                  borderColor: color === c && !eraserActive ? '#6366f1' : '#d1d5db',
+                  transform: color === c && !eraserActive ? 'scale(1.15)' : undefined,
                 }}
               />
             ))}
           </div>
-          <div className="flex gap-1">
-            {SIZES.map((s) => (
+
+          {/* Stroke sizes — dimmed when fill is active */}
+          <div className={`flex gap-1 transition-opacity ${fillActive ? 'opacity-30 pointer-events-none' : ''}`}>
+            {SIZES.map((s, i) => (
               <button
                 key={s}
-                onClick={() => setSize(s)}
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center border transition-colors hover:bg-muted"
-                style={{ borderColor: size === s ? '#6366f1' : '#d1d5db' }}
+                onClick={() => { setSize(s); if (eraserActive) setTool('pen') }}
+                className="w-10 h-8 rounded flex flex-col items-center justify-center gap-0.5 border transition-colors hover:bg-muted"
+                style={{ borderColor: size === s && !eraserActive && !fillActive ? '#6366f1' : '#d1d5db' }}
               >
-                <div className="rounded-full bg-foreground" style={{ width: s, height: s }} />
+                <div className="rounded-full bg-foreground" style={{ width: Math.min(s, 10), height: Math.min(s, 10) }} />
+                <span className="text-[9px] leading-none text-muted-foreground">{SIZE_LABELS[i]}</span>
               </button>
             ))}
           </div>
-          <Button
-            variant={tool === 'eraser' ? 'secondary' : 'outline'}
-            size="sm"
-            className="h-7 sm:h-8 px-2 sm:px-3 text-xs"
-            onClick={() => setTool(tool === 'eraser' ? 'pen' : 'eraser')}
-          >
-            Eraser
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 sm:h-8 px-2 sm:px-3 text-xs" onClick={onClear}>
-            Clear
-          </Button>
+
+          {/* Tools group */}
+          <div className="flex gap-1">
+            <Button
+              variant={eraserActive ? 'secondary' : 'outline'}
+              size="sm"
+              className="h-8 px-2 sm:px-3 text-xs gap-1.5"
+              onClick={() => setTool(eraserActive ? 'pen' : 'eraser')}
+            >
+              <Eraser className="w-3.5 h-3.5" />
+              Eraser
+            </Button>
+            <Button
+              variant={fillActive ? 'secondary' : 'outline'}
+              size="sm"
+              className="h-8 px-2 sm:px-3 text-xs gap-1.5"
+              onClick={() => setTool(fillActive ? 'pen' : 'fill')}
+            >
+              <PaintBucket className="w-3.5 h-3.5" />
+              Fill
+            </Button>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-1">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 px-2 sm:px-3 text-xs gap-1.5"
+              onClick={handleUndo}
+              disabled={!canUndo}
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+              Undo
+            </Button>
+            <Button variant="outline" size="sm" className="h-8 px-2 sm:px-3 text-xs" onClick={onClear}>
+              Clear
+            </Button>
+          </div>
         </div>
       )}
     </div>
