@@ -27,9 +27,8 @@ export function Home() {
   })
 
   const createMutation = useCreateRoom({
-    onSuccess: ({ code }) => {
-      const guestUsername = createForm.getValues('guestUsername')
-      navigate(`/room/${code}`, { state: { guestUsername: user ? undefined : guestUsername } })
+    onSuccess: ({ code }, variables) => {
+      navigate(`/room/${code}`, { state: { guestUsername: variables.guestUsername } })
     },
   })
 
@@ -78,7 +77,9 @@ export function Home() {
                 className="uppercase font-mono tracking-wider"
                 maxLength={10}
               />
-              <Button type="submit">Join</Button>
+              <Button type="submit" 
+              variant="default"
+              >Join</Button>
             </form>
             {joinForm.formState.errors.code && (
               <p className="text-destructive text-xs mt-2">{joinForm.formState.errors.code.message}</p>
@@ -160,7 +161,7 @@ export function Home() {
             <DialogTitle>Create a room</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={createForm.handleSubmit((d) => createMutation.mutate({ ...d, guestUsername: user ? undefined : d.guestUsername }))}
+            onSubmit={createForm.handleSubmit((d) => createMutation.mutate({ ...d, guestUsername: user ? undefined : createForm.getValues('guestUsername') }))}
             className="space-y-4 mt-1"
           >
             {!user && (
