@@ -11,6 +11,9 @@
   "scripts": {
     "build": "tsc"
   },
+  "devDependencies": {
+    "typescript": "*"
+  },
   "peerDependencies": {
     "zod": ">=4"
   }

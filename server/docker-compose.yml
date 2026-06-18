@@ -2,8 +2,8 @@ services:
   # Application setup
   api:
     build:
-      context: .              
-      dockerfile: infra/Dockerfile
+      context: ../
+      dockerfile: server/infra/Dockerfile
     ports:
       - '6969:6969'
     env_file:
