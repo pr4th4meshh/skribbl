@@ -19,7 +19,7 @@ export const drawDataSchema = z.object({
   y: z.number(),
   color: z.string(),
   size: z.number(),
-  tool: z.enum(['pen', 'eraser']),
+  tool: z.enum(['pen', 'eraser', 'fill']),
 });
 
 export const chatMessageSchema = z.object({
