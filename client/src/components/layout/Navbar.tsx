@@ -1,6 +1,6 @@
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuthStore } from '@/stores/auth.store'
-import { Button } from '@/components/ui/button'
+import { Link, useNavigate } from "react-router-dom"
+import { useAuthStore } from "@/stores/auth.store"
+import { Button } from "@/components/ui/button"
 
 export function Navbar() {
   const { user, clearAuth } = useAuthStore()
@@ -8,7 +8,7 @@ export function Navbar() {
 
   const logout = () => {
     clearAuth()
-    navigate('/')
+    navigate("/")
   }
 
   return (
@@ -20,11 +20,32 @@ export function Navbar() {
           </span>
         </Link>
         <nav className="flex items-center gap-1">
-          <Link to="/leaderboard" className="text-xs text-muted-foreground hover:text-foreground sm:hidden px-2 py-1">
+          <a
+            href="https://github.com/pr4th4meshh/skribbl"
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-muted-foreground hover:text-foreground px-2 py-1"
+          >
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+            >
+              Github
+            </Button>
+          </a>
+          <Link
+            to="/leaderboard"
+            className="text-xs text-muted-foreground hover:text-foreground sm:hidden px-2 py-1"
+          >
             Board
           </Link>
           <Link to="/leaderboard">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground hidden sm:inline-flex">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-foreground hidden sm:inline-flex"
+            >
               Leaderboard
             </Button>
           </Link>
@@ -33,12 +54,20 @@ export function Navbar() {
               <span className="text-xs sm:text-sm font-medium text-foreground border border-border rounded-full px-2 sm:px-3 py-1 bg-muted max-w-[100px] sm:max-w-none truncate">
                 {user.username}
               </span>
-              <Button variant="outline" size="sm" onClick={logout}>Log out</Button>
+              <Button variant="outline" size="sm" onClick={logout}>
+                Log out
+              </Button>
             </div>
           ) : (
             <div className="flex items-center gap-1 ml-1 sm:ml-2">
-              <Link to="/login"><Button variant="ghost" size="sm">Log in</Button></Link>
-              <Link to="/register"><Button size="sm">Sign up</Button></Link>
+              <Link to="/login">
+                <Button variant="ghost" size="sm">
+                  Log in
+                </Button>
+              </Link>
+              <Link to="/register">
+                <Button size="sm">Sign up</Button>
+              </Link>
             </div>
           )}
         </nav>
