@@ -5,10 +5,12 @@ import { Login } from '@/pages/Login'
 import { Register } from '@/pages/Register'
 import { Room } from '@/pages/Room'
 import { Leaderboard } from '@/pages/Leaderboard'
+import { BackendWakeupModal } from '@/components/common/BackendWakeupModal'
 
 export default function App() {
   return (
     <TanstackProvider>
+      <BackendWakeupModal />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
