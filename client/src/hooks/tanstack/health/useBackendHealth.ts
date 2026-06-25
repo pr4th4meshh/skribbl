@@ -12,5 +12,5 @@ export function useBackendHealth() {
     refetchIntervalInBackground: true,
   })
 
-  return { isDown: query.isError }
+  return { isDown: query.isPending || query.isError }
 }
