@@ -11,7 +11,9 @@ export function useBackendHealth() {
       return true
     },
     retry: false,
-    refetchInterval: (query) => (query.state.status === 'success' ? false : 3000),
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    refetchInterval: (q) => (q.state.status === 'error' ? 10000 : false),
     refetchIntervalInBackground: true,
   })
 

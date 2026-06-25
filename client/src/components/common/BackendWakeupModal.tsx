@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 import {
   Dialog,
@@ -11,21 +11,16 @@ import { useBackendHealth } from '@/hooks/tanstack/health/useBackendHealth'
 
 export function BackendWakeupModal() {
   const { isDown } = useBackendHealth()
-  const [elapsed, setElapsed] = useState(0)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const startedAt = useRef<number>(0)
 
   useEffect(() => {
     if (isDown && !timerRef.current) {
       startedAt.current = Date.now()
-      timerRef.current = setInterval(() => {
-        setElapsed(Math.floor((Date.now() - startedAt.current) / 1000))
-      }, 1000)
     }
     if (!isDown && timerRef.current) {
       clearInterval(timerRef.current)
       timerRef.current = null
-      setElapsed(0)
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -47,11 +42,6 @@ export function BackendWakeupModal() {
           </DialogTitle>
           <DialogDescription>
             The backend is on a free-tier host and may take up to a minute to spin up. Hang tight!
-            {elapsed > 0 && (
-              <span className="mt-1 block text-xs text-muted-foreground">
-                Waiting for {elapsed}s…
-              </span>
-            )}
           </DialogDescription>
         </DialogHeader>
       </DialogContent>
