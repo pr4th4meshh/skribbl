@@ -7,16 +7,14 @@ import { useCreateRoom } from '@/hooks/tanstack/rooms/useCreateRoom'
 import { useAuthStore } from '@/stores/auth.store'
 import { Navbar } from '@/components/layout/Navbar'
 import { joinRoomSchema, createRoomSchema, parseCustomWords, type JoinRoomForm, type CreateRoomForm } from '@/schema/room.schema'
-import { GAME_MODE_INFO, WORD_DIFFICULTY_LABELS } from '@/utils/gameModes'
-import { GAME_MODES, WORD_DIFFICULTIES } from '@skribbl/shared'
+import { GAME_MODE_INFO, WORD_DIFFICULTY_LABELS, LANGUAGE_LABELS } from '@/utils/gameModes'
+import { GAME_MODES, WORD_DIFFICULTIES, LANGUAGES } from '@skribbl/shared'
+import { SELECT_CLASS } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-
-const SELECT_CLASS =
-  'h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]'
 
 export function Home() {
   const navigate = useNavigate()
@@ -29,7 +27,7 @@ export function Home() {
   const createForm = useForm<CreateRoomForm & { guestUsername?: string }>({
     resolver: zodResolver(createRoomSchema),
     defaultValues: {
-      name: '', isPrivate: false as boolean, maxPlayers: 8, rounds: 3, drawTime: 80,
+      name: '', isPrivate: false as boolean, maxPlayers: 8, rounds: 3, drawTime: 80, language: 'english',
       mode: 'classic', wordDifficulty: 'mixed', customWords: '', customWordsOnly: false,
     },
   })
@@ -145,6 +143,7 @@ export function Home() {
                     <p className="font-medium truncate">{room.name}</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       by {room.host.username} · {room.rounds} rounds · {room.drawTime}s draw time
+                      {room.language !== 'english' && ` · ${LANGUAGE_LABELS[room.language as keyof typeof LANGUAGE_LABELS] ?? room.language}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -208,7 +207,7 @@ export function Home() {
             {createForm.formState.errors.maxPlayers && (
               <p className="text-destructive text-xs">{createForm.formState.errors.maxPlayers.message}</p>
             )}
-            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Game mode</Label>
                 <select {...createForm.register('mode')} className={SELECT_CLASS}>
@@ -216,9 +215,15 @@ export function Home() {
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs text-muted-foreground">Word difficulty</Label>
+                <Label className="text-xs text-muted-foreground">Difficulty</Label>
                 <select {...createForm.register('wordDifficulty')} className={SELECT_CLASS}>
                   {WORD_DIFFICULTIES.map((d) => <option key={d} value={d}>{WORD_DIFFICULTY_LABELS[d]}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Language</Label>
+                <select {...createForm.register('language')} className={SELECT_CLASS}>
+                  {LANGUAGES.map((l) => <option key={l} value={l}>{LANGUAGE_LABELS[l]}</option>)}
                 </select>
               </div>
             </div>

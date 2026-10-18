@@ -1,4 +1,4 @@
-import type { GameMode, WordDifficulty, Team } from '@/types'
+import type { GameMode, WordDifficulty, Team, Language } from '@/types'
 
 export const GAME_MODE_INFO: Record<GameMode, { label: string; description: string }> = {
   classic: { label: 'Classic', description: 'Letters reveal as time runs out' },
@@ -13,6 +13,13 @@ export const WORD_DIFFICULTY_LABELS: Record<WordDifficulty, string> = {
   easy: 'Easy',
   medium: 'Medium',
   hard: 'Hard',
+}
+
+export const LANGUAGE_LABELS: Record<Language, string> = {
+  english: 'English',
+  spanish: 'Español',
+  french: 'Français',
+  german: 'Deutsch',
 }
 
 export const TEAM_STYLES: Record<Team, { label: string; text: string; bg: string; dot: string }> = {

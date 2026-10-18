@@ -13,6 +13,7 @@ import { WaitingLobby } from '@/components/game/WaitingLobby'
 import { RoundOverlay } from '@/components/game/RoundOverlay'
 import { SelectingWordOverlay } from '@/components/game/SelectingWordOverlay'
 import { GameOverDialog } from '@/components/game/GameOverDialog'
+import { RoomSettingsDialog } from '@/components/game/RoomSettingsDialog'
 import { ReactionBar } from '@/components/game/ReactionBar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,7 @@ export function Room() {
   const roomCode = code?.toUpperCase() ?? ''
   const [showGuestJoin, setShowGuestJoin] = useState(!user && !locationGuestUsername)
   const [mobileTab, setMobileTab] = useState<'players' | 'chat'>('chat')
+  const [showSettings, setShowSettings] = useState(false)
 
   const {
     connect,
@@ -49,6 +51,7 @@ export function Room() {
     sendClear,
     undo,
     redo,
+    updateSettings,
     selectWord,
     sendMessage,
     reactions,
@@ -164,6 +167,8 @@ export function Room() {
               customWordsOnly={roomState.customWordsOnly}
               drawTime={roomState.drawTime}
               totalRounds={roomState.totalRounds}
+              language={roomState.language}
+              onEditSettings={() => setShowSettings(true)}
             />
           )}
           {roomState.status !== 'WAITING' && (
@@ -218,6 +223,24 @@ export function Room() {
         pickSeconds={roomState.mode === 'speed' ? 5 : 10}
         onSelect={(word) => { selectWord(word); clearWordChoices() }}
       />
+
+      {isHost && roomState.status === 'WAITING' && (
+        <RoomSettingsDialog
+          open={showSettings}
+          onOpenChange={setShowSettings}
+          playerCount={roomState.players.length}
+          onSave={updateSettings}
+          settings={{
+            isPrivate: roomState.isPrivate,
+            maxPlayers: roomState.maxPlayers,
+            rounds: roomState.totalRounds,
+            drawTime: roomState.drawTime,
+            language: roomState.language,
+            mode: roomState.mode,
+            wordDifficulty: roomState.wordDifficulty,
+          }}
+        />
+      )}
 
       <GameOverDialog gameOver={gameOver} drawings={drawings} onClose={() => navigate('/')} />
     </div>

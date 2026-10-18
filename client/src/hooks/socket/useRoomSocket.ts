@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import type { RefObject } from 'react'
 import { SERVER_EVENTS, CLIENT_EVENTS } from '@skribbl/shared'
-import type { DrawData, ApiResponse, Reaction, Team } from '@/types'
+import type { DrawData, ApiResponse, Reaction, Team, RoomSettings } from '@/types'
 import type { CanvasHandle } from '@/components/game/Canvas'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGameStore } from '@/stores/game.store'
@@ -305,6 +305,10 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     socket?.emit(CLIENT_EVENTS.GAME_REDO)
   }, [])
 
+  const updateSettings = useCallback((settings: RoomSettings) => {
+    socket?.emit(CLIENT_EVENTS.ROOM_UPDATE_SETTINGS, settings)
+  }, [])
+
   const selectWord = useCallback((word: string) => {
     socket?.emit(CLIENT_EVENTS.GAME_SELECT_WORD, { word })
   }, [])
@@ -345,6 +349,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     sendClear,
     undo,
     redo,
+    updateSettings,
     selectWord,
     sendMessage,
     reactions,
