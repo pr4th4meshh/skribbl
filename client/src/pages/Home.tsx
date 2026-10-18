@@ -4,6 +4,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRooms } from '@/hooks/tanstack/rooms/useRooms'
 import { useCreateRoom } from '@/hooks/tanstack/rooms/useCreateRoom'
+import { useQuickPlay } from '@/hooks/tanstack/rooms/useQuickPlay'
 import { useAuthStore } from '@/stores/auth.store'
 import { Navbar } from '@/components/layout/Navbar'
 import { joinRoomSchema, createRoomSchema, parseCustomWords, type JoinRoomForm, type CreateRoomForm } from '@/schema/room.schema'
@@ -20,6 +21,7 @@ export function Home() {
   const navigate = useNavigate()
   const user = useAuthStore((s) => s.user)
   const [showCreate, setShowCreate] = useState(false)
+  const [noOpenRooms, setNoOpenRooms] = useState(false)
 
   const { data: rooms, isLoading } = useRooms()
 
@@ -37,6 +39,13 @@ export function Home() {
   const createMutation = useCreateRoom({
     onSuccess: ({ code }, variables) => {
       navigate(`/room/${code}`, { state: { guestUsername: variables.guestUsername } })
+    },
+  })
+
+  const quickPlay = useQuickPlay({
+    onSuccess: ({ code }) => {
+      if (code) navigate(`/room/${code}`)
+      else setNoOpenRooms(true)
     },
   })
 
@@ -71,7 +80,7 @@ export function Home() {
         </div>
 
         {/* Join / Create */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="bg-card border border-border rounded-2xl p-5 shadow-sm">
             <h2 className="font-semibold text-base mb-1">Join a room</h2>
             <p className="text-sm text-muted-foreground mb-4">Have a code? Jump straight in.</p>
@@ -102,6 +111,24 @@ export function Home() {
             <Button onClick={() => setShowCreate(true)} className="w-full">
               Create room
             </Button>
+          </div>
+
+          <div className="bg-card border border-border rounded-2xl p-5 shadow-sm flex flex-col justify-between sm:col-span-2 lg:col-span-1">
+            <div>
+              <h2 className="font-semibold text-base mb-1">Quick play</h2>
+              <p className="text-sm text-muted-foreground mb-4">
+                {noOpenRooms ? 'No open public rooms right now. Create one and others can join you.' : 'Jump into any open public room.'}
+              </p>
+            </div>
+            <Button
+              onClick={() => { setNoOpenRooms(false); quickPlay.mutate() }}
+              disabled={quickPlay.isPending}
+              variant="outline"
+              className="w-full"
+            >
+              {quickPlay.isPending ? 'Finding a room…' : 'Play now'}
+            </Button>
+            {quickPlay.isError && <p className="text-destructive text-xs mt-2">Couldn't search for rooms. Try again.</p>}
           </div>
         </div>
 
