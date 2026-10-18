@@ -6,6 +6,8 @@ const router = Router();
 
 router.post('/', optionalAuth, roomController.create);
 router.get('/', roomController.list);
+// Must come before '/:code' so it isn't read as a room code
+router.get('/quick-play', optionalAuth, roomController.quickPlay);
 router.get('/:code', roomController.getRoom);
 
 export default router;

@@ -1,4 +1,5 @@
 import type { Server } from 'socket.io';
+import { effectiveDrawTime } from '@skribbl/shared';
 import { gameDAO, type GameDAO } from '../dao/game.dao';
 import { roomService, sanitizeState } from '../../room/services/room.service';
 import {
@@ -116,6 +117,7 @@ export class GameService {
     }
 
     state.status = 'IN_PROGRESS';
+    state.drawTime = effectiveDrawTime(state.mode, state.drawTime);
     if (state.id) {
       const game = await this.dao.createGame(state.id);
       state.gameId = String(game.id);

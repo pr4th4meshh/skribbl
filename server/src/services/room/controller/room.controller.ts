@@ -30,6 +30,14 @@ export class RoomController {
     }
   };
 
+  quickPlay = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      success(res, { code: await this.service.quickPlay(req.user?.userId) });
+    } catch (err) {
+      next(err);
+    }
+  };
+
   getRoom = async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
       const raw = req.params['code'];
