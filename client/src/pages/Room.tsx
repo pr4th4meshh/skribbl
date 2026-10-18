@@ -46,7 +46,8 @@ export function Room() {
     startGame,
     sendDraw,
     sendClear,
-    sendUndo,
+    undo,
+    redo,
     selectWord,
     sendMessage,
     reactions,
@@ -165,7 +166,7 @@ export function Room() {
             />
           )}
           {roomState.status !== 'WAITING' && (
-            <Canvas ref={canvasRef} isDrawer={isDrawer} onDraw={sendDraw} onClear={sendClear} onUndo={sendUndo} />
+            <Canvas ref={canvasRef} isDrawer={isDrawer} onDraw={sendDraw} onClear={sendClear} onUndo={undo} onRedo={redo} />
           )}
           {isDrawingPhase && (
             <ReactionBar reactions={reactions} canReact={!isDrawer} onReact={react} raised={isDrawer} />

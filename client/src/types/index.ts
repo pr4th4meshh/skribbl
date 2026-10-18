@@ -10,6 +10,9 @@ export type {
   WordDifficulty,
   Team,
   Reaction,
+  Language,
+  RoomSettings,
+  DrawTool,
   ServerToClientEvents,
   ClientToServerEvents,
 } from '@skribbl/shared'

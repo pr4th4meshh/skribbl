@@ -185,6 +185,10 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
         canvasRef.current?.clearCanvas()
       })
 
+      socket.on(SERVER_EVENTS.GAME_CANVAS_SYNC, (sync) => {
+        canvasRef.current?.syncCanvas(sync)
+      })
+
       socket.on(SERVER_EVENTS.GAME_MESSAGE, (msg) => {
         addMessage(msg)
       })
@@ -270,11 +274,12 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     canvasRef.current?.clearCanvas()
   }, [canvasRef])
 
-  const sendUndo = useCallback((remainingStrokes: DrawData[]) => {
-    socket?.emit(CLIENT_EVENTS.GAME_CLEAR)
-    for (const data of remainingStrokes) {
-      socket?.emit(CLIENT_EVENTS.GAME_DRAW, data)
-    }
+  const undo = useCallback(() => {
+    socket?.emit(CLIENT_EVENTS.GAME_UNDO)
+  }, [])
+
+  const redo = useCallback(() => {
+    socket?.emit(CLIENT_EVENTS.GAME_REDO)
   }, [])
 
   const selectWord = useCallback((word: string) => {
@@ -314,7 +319,8 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     startGame,
     sendDraw,
     sendClear,
-    sendUndo,
+    undo,
+    redo,
     selectWord,
     sendMessage,
     reactions,
