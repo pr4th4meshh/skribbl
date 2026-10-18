@@ -1,4 +1,4 @@
-import type { DrawData, RoomState, ChatMessage } from './schemas.js';
+import type { DrawData, RoomState, ChatMessage, Reaction, Team } from './schemas.js';
 
 export const CLIENT_EVENTS = {
   ROOM_JOIN:        'room:join',
@@ -8,6 +8,9 @@ export const CLIENT_EVENTS = {
   GAME_CLEAR:       'game:clear',
   GAME_GUESS:       'game:guess',
   CHAT_MESSAGE:     'chat:message',
+  ROOM_KICK:        'room:kick',
+  ROOM_VOTE_KICK:   'room:vote-kick',
+  GAME_REACT:       'game:react',
 } as const;
 
 export const SERVER_EVENTS = {
@@ -24,6 +27,9 @@ export const SERVER_EVENTS = {
   GAME_GUESS_CORRECT:'game:guess-correct',
   GAME_ROUND_END:    'game:round-end',
   GAME_ENDED:        'game:ended',
+  GAME_NOTICE:       'game:notice',
+  GAME_REACTION:     'game:reaction',
+  ROOM_KICKED:       'room:kicked',
   ERROR:             'error',
 } as const;
 
@@ -62,7 +68,18 @@ export interface ServerToClientEvents {
   'game:ended': (data: {
     scores: { id: string; username: string; score: number }[];
     winner: { id: string; username: string; score: number };
+    teams?: { red: number; blue: number; winner: Team | 'tie' };
   }) => void;
+  // Private message shown only to the receiving player (close guesses, warnings)
+  'game:notice': (data: { message: string }) => void;
+  'game:reaction': (data: {
+    playerId: string;
+    username: string;
+    reaction: Reaction;
+    likes: number;
+    dislikes: number;
+  }) => void;
+  'room:kicked': (data: { reason: string }) => void;
   error: (data: { message: string }) => void;
 }
 
@@ -74,4 +91,7 @@ export interface ClientToServerEvents {
   'game:clear': () => void;
   'game:guess': (data: { text: string }) => void;
   'chat:message': (data: { text: string }) => void;
+  'room:kick': (data: { playerId: string }) => void;
+  'room:vote-kick': (data: { playerId: string }) => void;
+  'game:react': (data: { reaction: Reaction }) => void;
 }

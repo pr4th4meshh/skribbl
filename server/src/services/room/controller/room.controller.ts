@@ -1,5 +1,5 @@
 import type { Response, NextFunction } from 'express';
-import { roomService, type RoomService } from '../services/room.service';
+import { roomService, sanitizeState, type RoomService } from '../services/room.service';
 import { createRoomSchema } from '../router/room.schema';
 import { success, failure } from '../../../shared/utils/response';
 import type { AuthRequest } from '../../../shared/types';
@@ -36,7 +36,7 @@ export class RoomController {
       const code = (Array.isArray(raw) ? raw[0] : raw ?? '').toUpperCase();
       const state = await this.service.getRoomState(code);
       if (!state) { failure(res, 'Room not found', 404); return; }
-      success(res, state);
+      success(res, sanitizeState(state, ''));
     } catch (err) {
       next(err);
     }

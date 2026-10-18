@@ -1,22 +1,19 @@
 import { v4 as uuid } from 'uuid';
 import type { Server } from 'socket.io';
 import { redis } from '../../shared/config/redis';
-import { roomService } from '../../services/room/services/room.service';
-import { clearGameJobs } from '../../services/game/queue/game.queue';
+import { roomService, sanitizeState } from '../../services/room/services/room.service';
+import { gameService } from '../../services/game/services/game.service';
+import { SOCKET_ROOM_KEY, SOCKET_PID_KEY } from '../../shared/utils/socketKeys';
 import type { AuthSocket } from '../middleware';
-import type { Player, RoomState } from '../../shared/types';
 
-const SOCKET_ROOM_KEY = (sid: string) => `socket:room:${sid}`;
-const SOCKET_PID_KEY = (sid: string) => `socket:pid:${sid}`;
-
-export function sanitizeState(state: RoomState, forPlayerId: string) {
-  const drawer = state.players.find((p) => p.isDrawing);
-  const isDrawer = drawer?.id === forPlayerId;
-  return {
-    ...state,
-    currentWord: isDrawer || state.status !== 'IN_PROGRESS' ? state.currentWord : undefined,
-    wordChoices: isDrawer ? state.wordChoices : undefined,
-  };
+async function getContext(socketId: string) {
+  const [code, playerId] = await redis.mget(SOCKET_ROOM_KEY(socketId), SOCKET_PID_KEY(socketId));
+  if (!code || !playerId) return null;
+  const state = await roomService.getRoomState(code);
+  if (!state) return null;
+  const player = state.players.find((p) => p.id === playerId);
+  if (!player) return null;
+  return { code, playerId, state, player };
 }
 
 export function registerRoomHandlers(io: Server, socket: AuthSocket) {
@@ -33,6 +30,8 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
     const playerId = socket.user?.userId ?? `guest_${uuid()}`;
     const username = socket.user?.username ?? data.username?.trim() ?? 'Guest';
 
+    if (state.bannedIds?.includes(playerId)) { socket.emit('error', { message: 'You were kicked from this room' }); return; }
+
     const existing = state.players.find((p) => p.id === playerId);
     if (existing) {
       // Same player re-connecting (e.g. React StrictMode double-mount race):
@@ -44,7 +43,7 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
       state.players.push({
         id: playerId, socketId: socket.id, username, avatar: null,
         score: 0, hasGuessed: false, isDrawing: false,
-        isHost: state.players.length === 0, isGuest, connected: true,
+        isHost: state.players.length === 0, isGuest, connected: true, team: null,
       });
     }
 
@@ -60,37 +59,48 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
     socket.to(code).emit('room:updated', sanitizeState(state, ''));
   });
 
+  socket.on('room:kick', async ({ playerId: targetId }: { playerId: string }) => {
+    try {
+      const ctx = await getContext(socket.id);
+      if (!ctx || !targetId) return;
+      if (!ctx.player.isHost) { socket.emit('error', { message: 'Only the host can kick players' }); return; }
+      if (targetId === ctx.playerId) return;
+      const target = ctx.state.players.find((p) => p.id === targetId);
+      if (!target) return;
+      await gameService.kickPlayer(ctx.code, targetId, io, {
+        reason: 'You were kicked by the host',
+        announcement: `${target.username} was kicked by the host`,
+        ban: true,
+      });
+    } catch (err) {
+      console.error('[room:kick] error:', err);
+    }
+  });
+
+  socket.on('room:vote-kick', async ({ playerId: targetId }: { playerId: string }) => {
+    try {
+      const ctx = await getContext(socket.id);
+      if (!ctx || !targetId) return;
+      await gameService.voteKick(ctx.code, ctx.playerId, targetId, io);
+    } catch (err) {
+      console.error('[room:vote-kick] error:', err);
+    }
+  });
+
   socket.on('disconnect', async () => {
-    const code = await redis.get(SOCKET_ROOM_KEY(socket.id));
-    const playerId = await redis.get(SOCKET_PID_KEY(socket.id));
+    const [code, playerId] = await redis.mget(SOCKET_ROOM_KEY(socket.id), SOCKET_PID_KEY(socket.id));
     await redis.del(SOCKET_ROOM_KEY(socket.id), SOCKET_PID_KEY(socket.id));
     if (!code || !playerId) return;
 
     const state = await roomService.getRoomState(code);
-    if (!state) return;
-
-    const playerIdx = state.players.findIndex((p) => p.id === playerId);
-    if (playerIdx === -1) return;
-
-    const player = state.players[playerIdx]!;
+    const player = state?.players.find((p) => p.id === playerId);
     // A newer socket already took over this player slot — don't evict them.
-    if (player.socketId !== socket.id) return;
+    if (!player || player.socketId !== socket.id) return;
 
-    // Transfer host before removing
-    if (player.isHost) {
-      const next = state.players.find((_, i) => i !== playerIdx);
-      if (next) { next.isHost = true; state.hostId = next.id; }
+    try {
+      await gameService.removePlayer(code, playerId, io);
+    } catch (err) {
+      console.error('[disconnect] error:', err);
     }
-
-    state.players.splice(playerIdx, 1);
-
-    if (state.players.length === 0) {
-      await clearGameJobs(code);
-      await roomService.setRoomState(state);
-      return;
-    }
-
-    await roomService.setRoomState(state);
-    io.to(code).emit('room:updated', sanitizeState(state, ''));
   });
 }

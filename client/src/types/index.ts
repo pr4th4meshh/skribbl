@@ -6,6 +6,10 @@ export type {
   RegisterInput,
   LoginInput,
   CreateRoomInput,
+  GameMode,
+  WordDifficulty,
+  Team,
+  Reaction,
   ServerToClientEvents,
   ClientToServerEvents,
 } from '@skribbl/shared'

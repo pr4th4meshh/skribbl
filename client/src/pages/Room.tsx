@@ -13,8 +13,10 @@ import { WaitingLobby } from '@/components/game/WaitingLobby'
 import { RoundOverlay } from '@/components/game/RoundOverlay'
 import { SelectingWordOverlay } from '@/components/game/SelectingWordOverlay'
 import { GameOverDialog } from '@/components/game/GameOverDialog'
+import { ReactionBar } from '@/components/game/ReactionBar'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { MIN_TEAMS_PLAYERS } from '@/utils/gameModes'
 
 export function Room() {
   const { code } = useParams<{ code: string }>()
@@ -47,6 +49,10 @@ export function Room() {
     sendUndo,
     selectWord,
     sendMessage,
+    reactions,
+    react,
+    kickPlayer,
+    voteKick,
   } = useRoomSocket(roomCode, canvasRef)
 
   useEffect(() => {
@@ -94,6 +100,29 @@ export function Room() {
   const chatDisabled = isDrawer && roomState.status === 'IN_PROGRESS' && !!roomState.currentWordHint
   const drawerIsSelecting =
     roomState.status === 'IN_PROGRESS' && !roomState.currentWordHint && !isDrawer && !!drawer
+  const isDrawingPhase = roomState.status === 'IN_PROGRESS' && !!roomState.currentWordHint && !roundOver
+  const isOpposingTeam =
+    roomState.mode === 'teams' && !!drawer?.team && !!currentPlayer?.team && drawer.team !== currentPlayer.team
+  const chatPlaceholder = isOpposingTeam && isDrawingPhase ? "Chat (other team's turn)…" : undefined
+
+  const playerList = (
+    <PlayerList
+      players={roomState.players}
+      currentPlayerId={playerId}
+      isHost={isHost}
+      kickVotes={roomState.kickVotes}
+      onKick={kickPlayer}
+      onVoteKick={voteKick}
+    />
+  )
+  const chat = (
+    <Chat
+      messages={messages}
+      onSend={(text) => sendMessage(text, isDrawer)}
+      disabled={chatDisabled}
+      placeholder={chatPlaceholder}
+    />
+  )
 
   return (
     <div className="h-dvh flex flex-col overflow-hidden bg-background">
@@ -107,6 +136,7 @@ export function Room() {
         isDrawer={isDrawer}
         isHost={isHost}
         playerCount={roomState.players.length}
+        minPlayers={roomState.mode === 'teams' ? MIN_TEAMS_PLAYERS : 2}
         timer={timer}
         onStartGame={startGame}
         onLogoClick={() => navigate('/')}
@@ -116,7 +146,7 @@ export function Room() {
       <div className="flex flex-1 overflow-hidden min-h-0">
         {/* Players — desktop sidebar */}
         <div className="hidden md:flex w-44 border-r shrink-0 overflow-hidden flex-col">
-          <PlayerList players={roomState.players} currentPlayerId={playerId} />
+          {playerList}
         </div>
 
         {/* Canvas / waiting area */}
@@ -127,10 +157,18 @@ export function Room() {
               isHost={isHost}
               playerCount={roomState.players.length}
               maxPlayers={roomState.maxPlayers}
+              mode={roomState.mode}
+              wordDifficulty={roomState.wordDifficulty}
+              customWordsOnly={roomState.customWordsOnly}
+              drawTime={roomState.drawTime}
+              totalRounds={roomState.totalRounds}
             />
           )}
           {roomState.status !== 'WAITING' && (
             <Canvas ref={canvasRef} isDrawer={isDrawer} onDraw={sendDraw} onClear={sendClear} onUndo={sendUndo} />
+          )}
+          {isDrawingPhase && (
+            <ReactionBar reactions={reactions} canReact={!isDrawer} onReact={react} raised={isDrawer} />
           )}
           {drawerIsSelecting && <SelectingWordOverlay drawerName={drawer!.username} />}
           {roundOver && <RoundOverlay roundOver={roundOver} />}
@@ -138,11 +176,7 @@ export function Room() {
 
         {/* Chat — desktop sidebar */}
         <div className="hidden md:flex w-60 border-l flex-col shrink-0 min-h-0 overflow-hidden">
-          <Chat
-            messages={messages}
-            onSend={(text) => sendMessage(text, isDrawer)}
-            disabled={chatDisabled}
-          />
+          {chat}
         </div>
       </div>
 
@@ -173,20 +207,13 @@ export function Room() {
           </button>
         </div>
         <div className="h-44 overflow-hidden">
-          {mobileTab === 'players' ? (
-            <PlayerList players={roomState.players} currentPlayerId={playerId} />
-          ) : (
-            <Chat
-              messages={messages}
-              onSend={(text) => sendMessage(text, isDrawer)}
-              disabled={chatDisabled}
-            />
-          )}
+          {mobileTab === 'players' ? playerList : chat}
         </div>
       </div>
 
       <WordChoices
         words={wordChoices}
+        pickSeconds={roomState.mode === 'speed' ? 5 : 10}
         onSelect={(word) => { selectWord(word); clearWordChoices() }}
       />
 

@@ -1,6 +1,6 @@
 import { useMutation, type UseMutationOptions } from '@tanstack/react-query'
 import { api } from '@/lib/axios'
-import type { ApiResponse } from '@/types'
+import type { ApiResponse, GameMode, WordDifficulty } from '@/types'
 
 interface CreateRoomVars {
   name: string
@@ -10,6 +10,10 @@ interface CreateRoomVars {
   drawTime?: number
   language?: string
   guestUsername?: string
+  mode?: GameMode
+  wordDifficulty?: WordDifficulty
+  customWords?: string[]
+  customWordsOnly?: boolean
 }
 
 interface CreateRoomResult {

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import type { RefObject } from 'react'
 import { SERVER_EVENTS, CLIENT_EVENTS } from '@skribbl/shared'
-import type { DrawData, ApiResponse } from '@/types'
+import type { DrawData, ApiResponse, Reaction, Team } from '@/types'
 import type { CanvasHandle } from '@/components/game/Canvas'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGameStore } from '@/stores/game.store'
@@ -15,7 +15,18 @@ const SOCKET_URL = (import.meta.env['VITE_SOCKET_URL'] as string | undefined) ??
 export interface GameEndData {
   scores: { id: string; username: string; score: number }[]
   winner: { id: string; username: string; score: number }
+  teams?: { red: number; blue: number; winner: Team | 'tie' }
 }
+
+export interface ReactionState {
+  likes: number
+  dislikes: number
+  mine: Reaction | null
+  // Bumped on every incoming reaction so the UI can replay its pop animation
+  last: { reaction: Reaction; username: string; key: number } | null
+}
+
+const EMPTY_REACTIONS: ReactionState = { likes: 0, dislikes: 0, mine: null, last: null }
 
 export interface RoundOverData {
   word: string
@@ -35,6 +46,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
   const [gameOver, setGameOver] = useState<GameEndData | null>(null)
   const [roundOver, setRoundOver] = useState<RoundOverData | null>(null)
   const [timer, setTimer] = useState(0)
+  const [reactions, setReactions] = useState<ReactionState>(EMPTY_REACTIONS)
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const drawTimeRef = useRef(0)
@@ -125,6 +137,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
 
       socket.on(SERVER_EVENTS.GAME_ROUND_START, ({ round, totalRounds, drawer, drawTime }) => {
         setRoundOver(null)
+        setReactions(EMPTY_REACTIONS)
         drawTimeRef.current = drawTime
         timerStartedRef.current = false
         stopTimer()
@@ -151,6 +164,8 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
       })
 
       socket.on(SERVER_EVENTS.GAME_WORD_SELECTED, ({ word }) => {
+        // Server may have auto-picked for us — close the picker either way
+        setWordChoices([])
         patchRoomState({ currentWord: word })
       })
 
@@ -211,6 +226,25 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
         setGameOver(data)
       })
 
+      socket.on(SERVER_EVENTS.GAME_NOTICE, ({ message }) => {
+        addMessage({ playerId: '', username: '', text: message, isCorrect: false, isSystem: false, timestamp: Date.now(), kind: 'close' })
+      })
+
+      socket.on(SERVER_EVENTS.GAME_REACTION, ({ playerId: reactorId, username, reaction, likes, dislikes }) => {
+        const isMine = reactorId === useGameStore.getState().playerId
+        setReactions((r) => ({
+          likes,
+          dislikes,
+          mine: isMine ? reaction : r.mine,
+          last: { reaction, username, key: (r.last?.key ?? 0) + 1 },
+        }))
+      })
+
+      socket.on(SERVER_EVENTS.ROOM_KICKED, ({ reason }) => {
+        setError(reason)
+        socket?.disconnect()
+      })
+
       socket.on(SERVER_EVENTS.ERROR, ({ message }) => {
         setError(message)
       })
@@ -256,6 +290,18 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     }
   }, [])
 
+  const kickPlayer = useCallback((playerId: string) => {
+    socket?.emit(CLIENT_EVENTS.ROOM_KICK, { playerId })
+  }, [])
+
+  const voteKick = useCallback((playerId: string) => {
+    socket?.emit(CLIENT_EVENTS.ROOM_VOTE_KICK, { playerId })
+  }, [])
+
+  const react = useCallback((reaction: Reaction) => {
+    socket?.emit(CLIENT_EVENTS.GAME_REACT, { reaction })
+  }, [])
+
   return {
     connect,
     disconnect,
@@ -271,5 +317,9 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     sendUndo,
     selectWord,
     sendMessage,
+    reactions,
+    react,
+    kickPlayer,
+    voteKick,
   }
 }

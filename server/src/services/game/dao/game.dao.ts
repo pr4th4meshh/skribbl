@@ -13,7 +13,7 @@ export class GameDAO {
     });
   }
 
-  async persistScores(state: RoomState, winnerId: string) {
+  async persistScores(state: RoomState, winnerIds: string[]) {
     if (!state.gameId) return;
 
     const gameIdInt = parseInt(state.gameId, 10);
@@ -36,7 +36,7 @@ export class GameDAO {
           data: {
             totalScore: { increment: p.score },
             gamesPlayed: { increment: 1 },
-            ...(p.id === winnerId ? { wins: { increment: 1 } } : {}),
+            ...(winnerIds.includes(p.id) ? { wins: { increment: 1 } } : {}),
           },
         }),
       );

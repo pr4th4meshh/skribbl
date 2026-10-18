@@ -10,6 +10,11 @@ A real-time multiplayer drawing and guessing game — draw a word, watch your fr
 - **Guest play** — join and play without an account; create a room as a guest
 - **Drawing tools** — pen (thin / medium / thick), eraser, flood fill, undo, clear
 - **Live word hints** — letters reveal progressively as time runs out
+- **Game modes** — Classic, No hints, Speed (half draw time), Combination (draw two words at once) and Teams (red vs blue)
+- **Word packs** — ~400 built-in words in easy / medium / hard tiers, plus custom words (optionally the only source); no repeats within a game
+- **Close-guess feedback** — near-misses privately tell you you're close
+- **Reactions** — guessers can 👍 / 👎 the current drawing
+- **Moderation** — host kick, majority vote-kick, and AFK drawers are skipped (removed after two idle turns)
 - **Scoring** — points awarded based on how quickly you guess; drawer earns bonus points
 - **Leaderboard** — persistent stats across games (wins, total score, games played)
 - **Public & private rooms** — browse open rooms or share a code with friends
