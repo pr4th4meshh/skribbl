@@ -1,4 +1,4 @@
-import type { DrawData, RoomState, ChatMessage, Reaction, Team } from './schemas.js';
+import type { DrawData, RoomState, ChatMessage, Reaction, Team, RoomSettings } from './schemas.js';
 
 export const CLIENT_EVENTS = {
   ROOM_JOIN:        'room:join',
@@ -6,11 +6,14 @@ export const CLIENT_EVENTS = {
   GAME_SELECT_WORD: 'game:select-word',
   GAME_DRAW:        'game:draw',
   GAME_CLEAR:       'game:clear',
+  GAME_UNDO:        'game:undo',
+  GAME_REDO:        'game:redo',
   GAME_GUESS:       'game:guess',
   CHAT_MESSAGE:     'chat:message',
   ROOM_KICK:        'room:kick',
   ROOM_VOTE_KICK:   'room:vote-kick',
   GAME_REACT:       'game:react',
+  ROOM_UPDATE_SETTINGS: 'room:update-settings',
 } as const;
 
 export const SERVER_EVENTS = {
@@ -23,6 +26,7 @@ export const SERVER_EVENTS = {
   GAME_HINT:         'game:hint',
   GAME_DRAW:         'game:draw',
   GAME_CLEAR:        'game:clear',
+  GAME_CANVAS_SYNC:  'game:canvas-sync',
   GAME_MESSAGE:      'game:message',
   GAME_GUESS_CORRECT:'game:guess-correct',
   GAME_ROUND_END:    'game:round-end',
@@ -54,6 +58,8 @@ export interface ServerToClientEvents {
   'game:hint': (data: { hint: string }) => void;
   'game:draw': (data: DrawData) => void;
   'game:clear': () => void;
+  // Full stroke list after an undo/redo; clients redraw from scratch
+  'game:canvas-sync': (data: { strokes: DrawData[]; canUndo: boolean; canRedo: boolean }) => void;
   'game:message': (msg: ChatMessage) => void;
   'game:guess-correct': (data: {
     player: { id: string; username: string };
@@ -89,9 +95,12 @@ export interface ClientToServerEvents {
   'game:select-word': (data: { word: string }) => void;
   'game:draw': (data: DrawData) => void;
   'game:clear': () => void;
+  'game:undo': () => void;
+  'game:redo': () => void;
   'game:guess': (data: { text: string }) => void;
   'chat:message': (data: { text: string }) => void;
   'room:kick': (data: { playerId: string }) => void;
   'room:vote-kick': (data: { playerId: string }) => void;
   'game:react': (data: { reaction: Reaction }) => void;
+  'room:update-settings': (data: RoomSettings) => void;
 }
