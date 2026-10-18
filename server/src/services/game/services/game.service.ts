@@ -49,6 +49,7 @@ async function announce(code: string, io: Server, text: string) {
 
 function wordOptions(state: RoomState): WordOptions {
   return {
+    language: state.language ?? 'english',
     difficulty: state.wordDifficulty ?? 'mixed',
     customWords: state.customWords ?? [],
     customWordsOnly: state.customWordsOnly ?? false,
