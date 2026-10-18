@@ -1,18 +1,30 @@
 import { z } from 'zod'
-import { GAME_MODES, WORD_DIFFICULTIES } from '@skribbl/shared'
+import { GAME_MODES, WORD_DIFFICULTIES, LANGUAGES } from '@skribbl/shared'
 
 export const joinRoomSchema = z.object({
   code: z.string().min(4).max(10),
 })
 
-export const createRoomSchema = z.object({
-  name: z.string().min(1).max(30),
+// Fields shared by the create dialog and the lobby settings dialog
+const roomSettingsShape = {
   isPrivate: z.boolean(),
   maxPlayers: z.number().int().min(2).max(12),
   rounds: z.number().int().min(1).max(10),
   drawTime: z.number().int().min(30).max(180),
+  language: z.enum(LANGUAGES),
   mode: z.enum(GAME_MODES),
   wordDifficulty: z.enum(WORD_DIFFICULTIES),
+}
+
+export const roomSettingsSchema = z.object(roomSettingsShape).superRefine((room, ctx) => {
+  if (room.mode === 'teams' && room.maxPlayers < 4) {
+    ctx.addIssue({ code: 'custom', path: ['maxPlayers'], message: 'Teams mode needs at least 4 players' })
+  }
+})
+
+export const createRoomSchema = z.object({
+  name: z.string().min(1).max(30),
+  ...roomSettingsShape,
   // Raw textarea input — split into a list on submit
   customWords: z.string().max(10_000),
   customWordsOnly: z.boolean(),
@@ -32,3 +44,4 @@ export function parseCustomWords(raw: string): string[] {
 
 export type JoinRoomForm = z.infer<typeof joinRoomSchema>
 export type CreateRoomForm = z.infer<typeof createRoomSchema>
+export type RoomSettingsForm = z.infer<typeof roomSettingsSchema>

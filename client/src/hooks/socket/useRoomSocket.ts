@@ -1,13 +1,14 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import type { RefObject } from 'react'
 import { SERVER_EVENTS, CLIENT_EVENTS } from '@skribbl/shared'
-import type { DrawData, ApiResponse, Reaction, Team } from '@/types'
+import type { DrawData, ApiResponse, Reaction, Team, RoomSettings } from '@/types'
 import type { CanvasHandle } from '@/components/game/Canvas'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGameStore } from '@/stores/game.store'
 import { api } from '@/lib/axios'
+import { playSound } from '@/utils/sounds'
 import type { ClientSocket } from '.'
 
 const SOCKET_URL = (import.meta.env['VITE_SOCKET_URL'] as string | undefined) ?? 'http://localhost:6969'
@@ -34,6 +35,13 @@ export interface RoundOverData {
   scores: { id: string; username: string; score: number; roundScore: number }[]
 }
 
+export interface Drawing {
+  round: number
+  drawer: string
+  word: string
+  image: string
+}
+
 let socket: ClientSocket | null = null
 
 export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandle | null>) {
@@ -47,6 +55,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
   const [roundOver, setRoundOver] = useState<RoundOverData | null>(null)
   const [timer, setTimer] = useState(0)
   const [reactions, setReactions] = useState<ReactionState>(EMPTY_REACTIONS)
+  const [drawings, setDrawings] = useState<Drawing[]>([])
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const drawTimeRef = useRef(0)
@@ -57,6 +66,11 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     timerRef.current = null
     setTimer(0)
   }, [])
+
+  // Count down the last ten seconds, louder for the final three
+  useEffect(() => {
+    if (timer > 0 && timer <= 10) playSound(timer <= 3 ? 'tickFinal' : 'tick')
+  }, [timer])
 
   const startTimer = useCallback((seconds: number) => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -132,6 +146,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
       })
 
       socket.on(SERVER_EVENTS.GAME_STARTED, ({ round, totalRounds }) => {
+        setDrawings([])
         patchRoomState({ status: 'IN_PROGRESS', currentRound: round, totalRounds })
       })
 
@@ -160,6 +175,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
       })
 
       socket.on(SERVER_EVENTS.GAME_WORD_CHOICES, ({ words }) => {
+        playSound('yourTurn')
         setWordChoices(words)
       })
 
@@ -185,11 +201,16 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
         canvasRef.current?.clearCanvas()
       })
 
+      socket.on(SERVER_EVENTS.GAME_CANVAS_SYNC, (sync) => {
+        canvasRef.current?.syncCanvas(sync)
+      })
+
       socket.on(SERVER_EVENTS.GAME_MESSAGE, (msg) => {
         addMessage(msg)
       })
 
       socket.on(SERVER_EVENTS.GAME_GUESS_CORRECT, ({ player, scores }) => {
+        playSound('correct')
         const curr = useGameStore.getState().roomState
         if (curr) {
           patchRoomState({
@@ -210,6 +231,12 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
           roundScore: s.score - (curr?.players.find((p) => p.id === s.id)?.score ?? 0),
         }))
         setRoundOver({ word, round: curr?.currentRound ?? 0, scores: roundScores })
+        // Capture the finished drawing before the next round clears the canvas
+        const image = canvasRef.current?.snapshot()
+        const drawer = curr?.players.find((p) => p.isDrawing)
+        if (image) {
+          setDrawings((d) => [...d, { round: curr?.currentRound ?? 0, drawer: drawer?.username ?? '', word, image }])
+        }
         if (curr) {
           patchRoomState({
             currentWord: word,
@@ -270,11 +297,16 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     canvasRef.current?.clearCanvas()
   }, [canvasRef])
 
-  const sendUndo = useCallback((remainingStrokes: DrawData[]) => {
-    socket?.emit(CLIENT_EVENTS.GAME_CLEAR)
-    for (const data of remainingStrokes) {
-      socket?.emit(CLIENT_EVENTS.GAME_DRAW, data)
-    }
+  const undo = useCallback(() => {
+    socket?.emit(CLIENT_EVENTS.GAME_UNDO)
+  }, [])
+
+  const redo = useCallback(() => {
+    socket?.emit(CLIENT_EVENTS.GAME_REDO)
+  }, [])
+
+  const updateSettings = useCallback((settings: RoomSettings) => {
+    socket?.emit(CLIENT_EVENTS.ROOM_UPDATE_SETTINGS, settings)
   }, [])
 
   const selectWord = useCallback((word: string) => {
@@ -311,10 +343,13 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     clearWordChoices: () => setWordChoices([]),
     gameOver,
     roundOver,
+    drawings,
     startGame,
     sendDraw,
     sendClear,
-    sendUndo,
+    undo,
+    redo,
+    updateSettings,
     selectWord,
     sendMessage,
     reactions,

@@ -1,5 +1,8 @@
-import type { GameMode, WordDifficulty } from '@/types'
-import { GAME_MODE_INFO, WORD_DIFFICULTY_LABELS, MIN_TEAMS_PLAYERS } from '@/utils/gameModes'
+import { Settings2 } from 'lucide-react'
+import { effectiveDrawTime } from '@skribbl/shared'
+import type { GameMode, WordDifficulty, Language } from '@/types'
+import { GAME_MODE_INFO, WORD_DIFFICULTY_LABELS, LANGUAGE_LABELS, MIN_TEAMS_PLAYERS } from '@/utils/gameModes'
+import { Button } from '@/components/ui/button'
 
 interface Props {
   roomCode: string
@@ -11,6 +14,8 @@ interface Props {
   customWordsOnly: boolean
   drawTime: number
   totalRounds: number
+  language: Language
+  onEditSettings?: () => void
 }
 
 export function WaitingLobby({
@@ -23,6 +28,8 @@ export function WaitingLobby({
   customWordsOnly,
   drawTime,
   totalRounds,
+  language,
+  onEditSettings,
 }: Props) {
   const minPlayers = mode === 'teams' ? MIN_TEAMS_PLAYERS : 2
   const modeInfo = GAME_MODE_INFO[mode] ?? GAME_MODE_INFO.classic
@@ -46,9 +53,15 @@ export function WaitingLobby({
         <p className="text-sm font-semibold">{modeInfo.label} mode</p>
         <p className="text-xs text-muted-foreground">{modeInfo.description}</p>
         <p className="text-xs text-muted-foreground">
-          {totalRounds} rounds · {drawTime}s draw time · {customWordsOnly ? 'Custom words only' : `${WORD_DIFFICULTY_LABELS[wordDifficulty] ?? 'Mixed'} words`}
+          {totalRounds} rounds · {effectiveDrawTime(mode, drawTime)}s draw time · {customWordsOnly ? 'Custom words only' : `${WORD_DIFFICULTY_LABELS[wordDifficulty] ?? 'Mixed'} words`} · {LANGUAGE_LABELS[language] ?? language}
         </p>
       </div>
+      {isHost && onEditSettings && (
+        <Button variant="outline" size="sm" onClick={onEditSettings} className="gap-1.5">
+          <Settings2 className="w-3.5 h-3.5" />
+          Change settings
+        </Button>
+      )}
       <p className="text-xs text-muted-foreground">
         {playerCount}/{maxPlayers} players joined
       </p>

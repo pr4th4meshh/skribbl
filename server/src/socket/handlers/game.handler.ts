@@ -1,10 +1,11 @@
 import type { Server } from 'socket.io';
+import { drawDataSchema } from '@skribbl/shared';
 import { redis } from '../../shared/config/redis';
 import { roomService } from '../../services/room/services/room.service';
 import { gameService } from '../../services/game/services/game.service';
 import type { AuthSocket } from '../middleware';
 import { SOCKET_ROOM_KEY, SOCKET_PID_KEY } from '../../shared/utils/socketKeys';
-import type { DrawData, Reaction } from '../../shared/types';
+import type { Reaction } from '../../shared/types';
 
 async function getContext(socketId: string) {
   const [code, playerId] = await redis.mget(SOCKET_ROOM_KEY(socketId), SOCKET_PID_KEY(socketId));
@@ -43,17 +44,47 @@ export function registerGameHandlers(io: Server, socket: AuthSocket) {
     }
   });
 
-  socket.on('game:draw', async (data: DrawData) => {
+  // Resolves the room code only if this socket is the current drawer
+  async function drawerRoom(): Promise<string | null> {
     const ctx = await getContext(socket.id);
-    if (!ctx || ctx.state.status !== 'IN_PROGRESS' || !ctx.player?.isDrawing) return;
-    if (data.type === 'start') await gameService.markDrawn(ctx.code);
-    socket.to(ctx.code).emit('game:draw', data);
+    if (!ctx || ctx.state.status !== 'IN_PROGRESS' || !ctx.player?.isDrawing) return null;
+    return ctx.code;
+  }
+
+  socket.on('game:draw', async (raw) => {
+    const parsed = drawDataSchema.safeParse(raw);
+    if (!parsed.success) return;
+    const data = parsed.data;
+    const code = await drawerRoom();
+    if (!code) return;
+    socket.to(code).emit('game:draw', data);
+    if (data.type === 'start' || data.type === 'shape') await gameService.markDrawn(code);
+    await gameService.recordDraw(code, data);
   });
 
   socket.on('game:clear', async () => {
-    const ctx = await getContext(socket.id);
-    if (!ctx || ctx.state.status !== 'IN_PROGRESS' || !ctx.player?.isDrawing) return;
-    socket.to(ctx.code).emit('game:clear');
+    const code = await drawerRoom();
+    if (!code) return;
+    socket.to(code).emit('game:clear');
+    await gameService.clearCanvas(code);
+  });
+
+  socket.on('game:undo', async () => {
+    try {
+      const code = await drawerRoom();
+      if (code) await gameService.undo(code, io);
+    } catch (err) {
+      console.error('[game:undo] error:', err);
+    }
+  });
+
+  socket.on('game:redo', async () => {
+    try {
+      const code = await drawerRoom();
+      if (code) await gameService.redo(code, io);
+    } catch (err) {
+      console.error('[game:redo] error:', err);
+    }
   });
 
   socket.on('game:guess', async ({ text }: { text: string }) => {

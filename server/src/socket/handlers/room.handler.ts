@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 import type { Server } from 'socket.io';
+import { roomSettingsSchema } from '@skribbl/shared';
 import { redis } from '../../shared/config/redis';
 import { roomService, sanitizeState } from '../../services/room/services/room.service';
 import { gameService } from '../../services/game/services/game.service';
@@ -84,6 +85,25 @@ export function registerRoomHandlers(io: Server, socket: AuthSocket) {
       await gameService.voteKick(ctx.code, ctx.playerId, targetId, io);
     } catch (err) {
       console.error('[room:vote-kick] error:', err);
+    }
+  });
+
+  socket.on('room:update-settings', async (raw) => {
+    try {
+      const ctx = await getContext(socket.id);
+      if (!ctx) return;
+      // Notices rather than 'error': the client treats 'error' as fatal and leaves the room
+      if (!ctx.player.isHost) { socket.emit('game:notice', { message: 'Only the host can change settings' }); return; }
+      const parsed = roomSettingsSchema.safeParse(raw);
+      if (!parsed.success) {
+        socket.emit('game:notice', { message: parsed.error.issues[0]?.message ?? 'Invalid settings' });
+        return;
+      }
+      const state = await roomService.updateSettings(ctx.code, parsed.data);
+      if (typeof state === 'string') { socket.emit('game:notice', { message: state }); return; }
+      io.to(ctx.code).emit('room:updated', sanitizeState(state, ''));
+    } catch (err) {
+      console.error('[room:update-settings] error:', err);
     }
   });
 

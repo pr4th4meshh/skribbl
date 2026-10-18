@@ -1,7 +1,7 @@
 import { roomDAO, type RoomDAO } from '../dao/room.dao';
 import { AppError } from '../../../shared/middleware/error.middleware';
 import type { CreateRoomInput } from '../router/room.schema';
-import type { RoomState, Player } from '../../../shared/types';
+import type { RoomState, RoomSettings } from '../../../shared/types';
 
 // Strip anything that would reveal the word to players who shouldn't see it
 export function sanitizeState(state: RoomState, forPlayerId: string): RoomState {
@@ -18,8 +18,8 @@ export function sanitizeState(state: RoomState, forPlayerId: string): RoomState 
 
 function gameSettings(input: CreateRoomInput) {
   return {
-    // Speed rounds halve the draw time
-    drawTime: input.mode === 'speed' ? Math.max(20, Math.round(input.drawTime / 2)) : input.drawTime,
+    // Stored as configured; speed mode halves it when the game starts
+    drawTime: input.drawTime,
     mode: input.mode,
     wordDifficulty: input.wordDifficulty,
     customWords: [...new Set(input.customWords)],
@@ -63,7 +63,7 @@ export class RoomService {
       isPrivate: room.isPrivate,
       maxPlayers: room.maxPlayers,
       totalRounds: room.rounds,
-      language: room.language,
+      language: input.language,
       status: 'WAITING',
       players: [],
       currentRound: 0,
@@ -79,6 +79,7 @@ export class RoomService {
     };
 
     await this.dao.setState(state);
+    await this.dao.setPublic(code, !state.isPrivate);
     return { code, roomId: String(room.id) };
   }
 
@@ -109,11 +110,51 @@ export class RoomService {
     };
 
     await this.dao.setState(state);
+    await this.dao.setPublic(code, !state.isPrivate);
     return { code, roomId: '' };
   }
 
   async listPublicRooms() {
     return this.dao.listPublic();
+  }
+
+  /** Returns the updated state, or an error message. */
+  async updateSettings(code: string, settings: RoomSettings): Promise<RoomState | string> {
+    const state = await this.dao.getState(code);
+    if (!state || state.status !== 'WAITING') return 'Settings can only be changed before the game starts';
+    if (settings.maxPlayers < state.players.length) {
+      return `Max players can't be lower than the ${state.players.length} players already here`;
+    }
+
+    state.isPrivate = settings.isPrivate;
+    state.maxPlayers = settings.maxPlayers;
+    state.totalRounds = settings.rounds;
+    state.drawTime = settings.drawTime;
+    state.language = settings.language;
+    state.mode = settings.mode;
+    state.wordDifficulty = settings.wordDifficulty;
+
+    await this.dao.setState(state);
+    await this.dao.setPublic(code, !state.isPrivate);
+    if (state.id) await this.dao.updateSettings(state.id, settings);
+    return state;
+  }
+
+  /** Picks the fullest open public room the player can join, pruning dead entries from the index. */
+  async quickPlay(playerId?: string): Promise<string | null> {
+    const codes = await this.dao.listPublicCodes();
+    const states = await this.dao.getStates(codes);
+
+    const stale = codes.filter((_, i) => !states[i] || states[i]!.status === 'ENDED' || states[i]!.isPrivate);
+    if (stale.length) await this.dao.removePublic(stale);
+
+    const open = states
+      .filter((s): s is RoomState => !!s && s.status === 'WAITING' && !s.isPrivate)
+      // An empty room has no host to start it
+      .filter((s) => s.players.length > 0 && s.players.length < s.maxPlayers)
+      .filter((s) => !playerId || (!s.bannedIds?.includes(playerId) && !s.players.some((p) => p.id === playerId)))
+      .sort((a, b) => b.players.length - a.players.length);
+    return open[0]?.code ?? null;
   }
 
   private async generateUniqueCode(): Promise<string> {

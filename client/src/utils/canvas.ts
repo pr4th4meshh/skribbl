@@ -43,6 +43,37 @@ export function fillStroke(
   ctx.globalCompositeOperation = 'source-over'
 }
 
+export type ShapeTool = 'line' | 'rect' | 'circle'
+
+// Line between the two points, or a rectangle / ellipse filling the box they span
+export function drawShape(
+  ctx: CanvasRenderingContext2D,
+  tool: ShapeTool,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  color: string,
+  size: number,
+) {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = size
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  if (tool === 'line') {
+    ctx.moveTo(x1, y1)
+    ctx.lineTo(x2, y2)
+  } else if (tool === 'rect') {
+    ctx.rect(Math.min(x1, x2), Math.min(y1, y2), Math.abs(x2 - x1), Math.abs(y2 - y1))
+  } else {
+    ctx.ellipse((x1 + x2) / 2, (y1 + y2) / 2, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2, 0, 0, Math.PI * 2)
+  }
+  ctx.stroke()
+  ctx.restore()
+}
+
 export function floodFill(canvas: HTMLCanvasElement, startX: number, startY: number, fillHex: string) {
   const ctx = canvas.getContext('2d')!
   const { width, height } = canvas

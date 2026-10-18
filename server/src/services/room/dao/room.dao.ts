@@ -1,9 +1,11 @@
 import { prisma } from '../../../shared/prisma/client';
 import { redis } from '../../../shared/config/redis';
-import type { RoomState } from '../../../shared/types';
+import type { RoomState, RoomSettings } from '../../../shared/types';
 import type { CreateRoomInput } from '../router/room.schema';
 
 const ROOM_TTL_SEC = 60 * 60 * 24;
+// Codes of public rooms (guest rooms included) for quick play; pruned lazily
+const PUBLIC_ROOMS_KEY = 'rooms:public';
 
 export class RoomDAO {
   // ── Redis ──────────────────────────────────────────────────────────
@@ -25,6 +27,25 @@ export class RoomDAO {
     return (await redis.exists(`room:${code}`)) === 1;
   }
 
+  async getStates(codes: string[]): Promise<(RoomState | null)[]> {
+    if (!codes.length) return [];
+    const data = await redis.mget(codes.map((c) => `room:${c}`));
+    return data.map((d) => (d ? (JSON.parse(d) as RoomState) : null));
+  }
+
+  async setPublic(code: string, isPublic: boolean): Promise<void> {
+    if (isPublic) await redis.sadd(PUBLIC_ROOMS_KEY, code);
+    else await redis.srem(PUBLIC_ROOMS_KEY, code);
+  }
+
+  async listPublicCodes(): Promise<string[]> {
+    return redis.smembers(PUBLIC_ROOMS_KEY);
+  }
+
+  async removePublic(codes: string[]): Promise<void> {
+    if (codes.length) await redis.srem(PUBLIC_ROOMS_KEY, ...codes);
+  }
+
   // ── Prisma ─────────────────────────────────────────────────────────
 
   async create(input: CreateRoomInput, hostId: string, code: string) {
@@ -38,6 +59,19 @@ export class RoomDAO {
         rounds: input.rounds,
         drawTime: input.drawTime,
         language: input.language,
+      },
+    });
+  }
+
+  async updateSettings(id: string, settings: RoomSettings) {
+    return prisma.room.update({
+      where: { id: parseInt(id, 10) },
+      data: {
+        isPrivate: settings.isPrivate,
+        maxPlayers: settings.maxPlayers,
+        rounds: settings.rounds,
+        drawTime: settings.drawTime,
+        language: settings.language,
       },
     });
   }

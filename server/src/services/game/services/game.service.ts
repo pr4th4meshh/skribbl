@@ -1,4 +1,5 @@
 import type { Server } from 'socket.io';
+import { effectiveDrawTime } from '@skribbl/shared';
 import { gameDAO, type GameDAO } from '../dao/game.dao';
 import { roomService, sanitizeState } from '../../room/services/room.service';
 import {
@@ -23,10 +24,15 @@ import {
 import { roomDAO } from '../../room/dao/room.dao';
 import { redis } from '../../../shared/config/redis';
 import { SOCKET_ROOM_KEY, SOCKET_PID_KEY } from '../../../shared/utils/socketKeys';
-import type { RoomState, ChatMessage, Player, Reaction, Team } from '../../../shared/types';
+import type { RoomState, ChatMessage, Player, Reaction, Team, DrawData } from '../../../shared/types';
 
 const DRAWN_KEY = (code: string) => `drawn:${code}`;
 const REACTIONS_KEY = (code: string) => `reactions:${code}`;
+// Every draw event of the current turn, in order
+const STROKES_KEY = (code: string) => `strokes:${code}`;
+// Undone strokes, one JSON array of draw events per entry
+const REDO_KEY = (code: string) => `redo:${code}`;
+const CANVAS_TTL_SEC = 600;
 const ROUND_END_LOCK = (code: string, round: number, drawerIndex: number) =>
   `roundend:${code}:${round}:${drawerIndex}`;
 
@@ -49,6 +55,7 @@ async function announce(code: string, io: Server, text: string) {
 
 function wordOptions(state: RoomState): WordOptions {
   return {
+    language: state.language ?? 'english',
     difficulty: state.wordDifficulty ?? 'mixed',
     customWords: state.customWords ?? [],
     customWordsOnly: state.customWordsOnly ?? false,
@@ -87,6 +94,11 @@ function buildDrawerOrder(state: RoomState): string[] {
   return order;
 }
 
+// A stroke begins with a 'start' event (pen, eraser, fill) or is a single 'shape' event
+function isStrokeStart(data: DrawData): boolean {
+  return data.type === 'start' || data.type === 'shape';
+}
+
 function idleDelayMs(state: RoomState): number {
   return Math.min(20, Math.max(10, Math.floor(state.drawTime / 3))) * 1_000;
 }
@@ -105,6 +117,7 @@ export class GameService {
     }
 
     state.status = 'IN_PROGRESS';
+    state.drawTime = effectiveDrawTime(state.mode, state.drawTime);
     if (state.id) {
       const game = await this.dao.createGame(state.id);
       state.gameId = String(game.id);
@@ -154,7 +167,7 @@ export class GameService {
     state.roundStartedAt = 0;
 
     await roomService.setRoomState(state);
-    await redis.del(DRAWN_KEY(code), REACTIONS_KEY(code));
+    await redis.del(DRAWN_KEY(code), REACTIONS_KEY(code), STROKES_KEY(code), REDO_KEY(code));
 
     const drawer = state.players[drawerIdx]!;
     console.log('[beginRound] drawer:', drawer.username, 'socketId:', drawer.socketId, 'words:', words);
@@ -222,6 +235,57 @@ export class GameService {
 
   async markDrawn(code: string) {
     await redis.set(DRAWN_KEY(code), '1', 'EX', 600);
+  }
+
+  async recordDraw(code: string, data: DrawData) {
+    const tx = redis.multi()
+      .rpush(STROKES_KEY(code), JSON.stringify(data))
+      .expire(STROKES_KEY(code), CANVAS_TTL_SEC);
+    // Drawing something new makes the undone strokes unreachable
+    if (isStrokeStart(data)) tx.del(REDO_KEY(code));
+    await tx.exec();
+  }
+
+  async clearCanvas(code: string) {
+    await redis.del(STROKES_KEY(code), REDO_KEY(code));
+  }
+
+  async undo(code: string, io: Server) {
+    const strokes = await this.getStrokes(code);
+    let start = strokes.length - 1;
+    while (start >= 0 && !isStrokeStart(strokes[start]!)) start--;
+    if (start === -1) return;
+
+    const tx = redis.multi();
+    // LTRIM key 0 -1 would keep the whole list, so drop the key when undoing the first stroke
+    if (start === 0) tx.del(STROKES_KEY(code));
+    else tx.ltrim(STROKES_KEY(code), 0, start - 1);
+    await tx
+      .rpush(REDO_KEY(code), JSON.stringify(strokes.slice(start)))
+      .expire(REDO_KEY(code), CANVAS_TTL_SEC)
+      .exec();
+    await this.syncCanvas(code, io);
+  }
+
+  async redo(code: string, io: Server) {
+    const raw = await redis.rpop(REDO_KEY(code));
+    if (!raw) return;
+    const stroke = JSON.parse(raw) as DrawData[];
+    await redis.multi()
+      .rpush(STROKES_KEY(code), ...stroke.map((d) => JSON.stringify(d)))
+      .expire(STROKES_KEY(code), CANVAS_TTL_SEC)
+      .exec();
+    await this.syncCanvas(code, io);
+  }
+
+  private async getStrokes(code: string): Promise<DrawData[]> {
+    const raw = await redis.lrange(STROKES_KEY(code), 0, -1);
+    return raw.map((d) => JSON.parse(d) as DrawData);
+  }
+
+  private async syncCanvas(code: string, io: Server) {
+    const [strokes, redoCount] = await Promise.all([this.getStrokes(code), redis.llen(REDO_KEY(code))]);
+    io.to(code).emit('game:canvas-sync', { strokes, canUndo: strokes.length > 0, canRedo: redoCount > 0 });
   }
 
   async handleIdleCheck(code: string, round: number, drawerIndex: number, io: Server) {
