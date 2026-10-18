@@ -1,10 +1,8 @@
 import type { Server } from 'socket.io';
 import { redis } from '../../shared/config/redis';
 import { roomService } from '../../services/room/services/room.service';
+import { SOCKET_ROOM_KEY, SOCKET_PID_KEY } from '../../shared/utils/socketKeys';
 import type { AuthSocket } from '../middleware';
-
-const SOCKET_ROOM_KEY = (sid: string) => `socket:room:${sid}`;
-const SOCKET_PID_KEY = (sid: string) => `socket:pid:${sid}`;
 
 export function registerChatHandlers(io: Server, socket: AuthSocket) {
   socket.on('chat:message', async ({ text }: { text: string }) => {

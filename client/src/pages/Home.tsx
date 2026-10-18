@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useForm } from 'react-hook-form'
+import { useForm, useWatch } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRooms } from '@/hooks/tanstack/rooms/useRooms'
 import { useCreateRoom } from '@/hooks/tanstack/rooms/useCreateRoom'
 import { useAuthStore } from '@/stores/auth.store'
 import { Navbar } from '@/components/layout/Navbar'
-import { joinRoomSchema, createRoomSchema, type JoinRoomForm, type CreateRoomForm } from '@/schema/room.schema'
+import { joinRoomSchema, createRoomSchema, parseCustomWords, type JoinRoomForm, type CreateRoomForm } from '@/schema/room.schema'
+import { GAME_MODE_INFO, WORD_DIFFICULTY_LABELS } from '@/utils/gameModes'
+import { GAME_MODES, WORD_DIFFICULTIES } from '@skribbl/shared'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
+
+const SELECT_CLASS =
+  'h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]'
 
 export function Home() {
   const navigate = useNavigate()
@@ -23,8 +28,13 @@ export function Home() {
   const joinForm = useForm<JoinRoomForm>({ resolver: zodResolver(joinRoomSchema) })
   const createForm = useForm<CreateRoomForm & { guestUsername?: string }>({
     resolver: zodResolver(createRoomSchema),
-    defaultValues: { name: '', isPrivate: false as boolean, maxPlayers: 8, rounds: 3, drawTime: 80 },
+    defaultValues: {
+      name: '', isPrivate: false as boolean, maxPlayers: 8, rounds: 3, drawTime: 80,
+      mode: 'classic', wordDifficulty: 'mixed', customWords: '', customWordsOnly: false,
+    },
   })
+  const selectedMode = useWatch({ control: createForm.control, name: 'mode' })
+  const customWordCount = parseCustomWords(useWatch({ control: createForm.control, name: 'customWords' }) ?? '').length
 
   const createMutation = useCreateRoom({
     onSuccess: ({ code }, variables) => {
@@ -161,7 +171,11 @@ export function Home() {
             <DialogTitle>Create a room</DialogTitle>
           </DialogHeader>
           <form
-            onSubmit={createForm.handleSubmit((d) => createMutation.mutate({ ...d, guestUsername: user ? undefined : createForm.getValues('guestUsername') }))}
+            onSubmit={createForm.handleSubmit((d) => createMutation.mutate({
+              ...d,
+              customWords: parseCustomWords(d.customWords),
+              guestUsername: user ? undefined : createForm.getValues('guestUsername'),
+            }))}
             className="space-y-4 mt-1"
           >
             {!user && (
@@ -191,10 +205,51 @@ export function Home() {
                 <Input type="number" {...createForm.register('drawTime', { valueAsNumber: true })} min={30} max={180} />
               </div>
             </div>
-            <label className="flex items-center gap-2.5 cursor-pointer select-none">
-              <input type="checkbox" className="rounded" {...createForm.register('isPrivate')} />
-              <span className="text-sm">Private room</span>
-            </label>
+            {createForm.formState.errors.maxPlayers && (
+              <p className="text-destructive text-xs">{createForm.formState.errors.maxPlayers.message}</p>
+            )}
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Game mode</Label>
+                <select {...createForm.register('mode')} className={SELECT_CLASS}>
+                  {GAME_MODES.map((m) => <option key={m} value={m}>{GAME_MODE_INFO[m].label}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Word difficulty</Label>
+                <select {...createForm.register('wordDifficulty')} className={SELECT_CLASS}>
+                  {WORD_DIFFICULTIES.map((d) => <option key={d} value={d}>{WORD_DIFFICULTY_LABELS[d]}</option>)}
+                </select>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground -mt-2">{GAME_MODE_INFO[selectedMode]?.description}</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">
+                Custom words <span className="font-normal">(comma or newline separated{customWordCount ? ` · ${customWordCount}` : ''})</span>
+              </Label>
+              <textarea
+                {...createForm.register('customWords')}
+                rows={2}
+                placeholder="inside joke, office dog, karaoke night…"
+                className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none resize-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
+              />
+              {createForm.formState.errors.customWords && (
+                <p className="text-destructive text-xs">{createForm.formState.errors.customWords.message}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-5 gap-y-2">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" className="rounded" {...createForm.register('isPrivate')} />
+                <span className="text-sm">Private room</span>
+              </label>
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input type="checkbox" className="rounded" {...createForm.register('customWordsOnly')} />
+                <span className="text-sm">Use only custom words</span>
+              </label>
+            </div>
+            {createMutation.isError && (
+              <p className="text-destructive text-xs">Couldn't create the room. Check your settings and try again.</p>
+            )}
             <Button type="submit" className="w-full" disabled={createMutation.isPending}>
               {createMutation.isPending ? 'Creating…' : 'Create room'}
             </Button>

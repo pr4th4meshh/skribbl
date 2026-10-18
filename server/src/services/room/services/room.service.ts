@@ -3,6 +3,34 @@ import { AppError } from '../../../shared/middleware/error.middleware';
 import type { CreateRoomInput } from '../router/room.schema';
 import type { RoomState, Player } from '../../../shared/types';
 
+// Strip anything that would reveal the word to players who shouldn't see it
+export function sanitizeState(state: RoomState, forPlayerId: string): RoomState {
+  const drawer = state.players.find((p) => p.isDrawing);
+  const isDrawer = drawer?.id === forPlayerId;
+  return {
+    ...state,
+    currentWord: isDrawer || state.status !== 'IN_PROGRESS' ? state.currentWord : undefined,
+    wordChoices: isDrawer ? state.wordChoices : undefined,
+    customWords: [],
+    usedWords: [],
+  };
+}
+
+function gameSettings(input: CreateRoomInput) {
+  return {
+    // Speed rounds halve the draw time
+    drawTime: input.mode === 'speed' ? Math.max(20, Math.round(input.drawTime / 2)) : input.drawTime,
+    mode: input.mode,
+    wordDifficulty: input.wordDifficulty,
+    customWords: [...new Set(input.customWords)],
+    customWordsOnly: input.customWordsOnly,
+    usedWords: [],
+    kickVotes: {},
+    bannedIds: [],
+    afkStrikes: {},
+  };
+}
+
 export class RoomService {
   constructor(private readonly dao: RoomDAO) {}
 
@@ -35,7 +63,6 @@ export class RoomService {
       isPrivate: room.isPrivate,
       maxPlayers: room.maxPlayers,
       totalRounds: room.rounds,
-      drawTime: room.drawTime,
       language: room.language,
       status: 'WAITING',
       players: [],
@@ -48,6 +75,7 @@ export class RoomService {
       roundStartedAt: 0,
       revealedIndices: [],
       gameId: null,
+      ...gameSettings(input),
     };
 
     await this.dao.setState(state);
@@ -65,7 +93,6 @@ export class RoomService {
       isPrivate: input.isPrivate,
       maxPlayers: input.maxPlayers,
       totalRounds: input.rounds,
-      drawTime: input.drawTime,
       language: input.language,
       status: 'WAITING',
       players: [],
@@ -78,6 +105,7 @@ export class RoomService {
       roundStartedAt: 0,
       revealedIndices: [],
       gameId: null,
+      ...gameSettings(input),
     };
 
     await this.dao.setState(state);

@@ -2,25 +2,25 @@ import { useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 
-const PICK_SECONDS = 25
-
 interface Props {
   words: string[]
   onSelect: (word: string) => void
+  // Must match the server's auto-pick delay, which picks for the drawer when this runs out
+  pickSeconds: number
 }
 
-export function WordChoices({ words, onSelect }: Props) {
-  const [timeLeft, setTimeLeft] = useState(PICK_SECONDS)
+export function WordChoices({ words, onSelect, pickSeconds }: Props) {
+  const [timeLeft, setTimeLeft] = useState(pickSeconds)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
     if (words.length === 0) {
       if (intervalRef.current) clearInterval(intervalRef.current)
-      setTimeLeft(PICK_SECONDS)
+      setTimeLeft(pickSeconds)
       return
     }
 
-    setTimeLeft(PICK_SECONDS)
+    setTimeLeft(pickSeconds)
     intervalRef.current = setInterval(() => {
       setTimeLeft((t) => {
         if (t <= 1) {
@@ -39,8 +39,8 @@ export function WordChoices({ words, onSelect }: Props) {
     }
   }, [words]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const urgent = timeLeft <= 8
-  const pct = (timeLeft / PICK_SECONDS) * 100
+  const urgent = timeLeft <= Math.ceil(pickSeconds / 3)
+  const pct = (timeLeft / pickSeconds) * 100
 
   return (
     <Dialog open={words.length > 0}>

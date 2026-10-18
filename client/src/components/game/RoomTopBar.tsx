@@ -11,6 +11,7 @@ interface Props {
   isDrawer: boolean
   isHost: boolean
   playerCount: number
+  minPlayers: number
   timer: number
   onStartGame: () => void
   onLogoClick: () => void
@@ -26,6 +27,7 @@ export function RoomTopBar({
   isDrawer,
   isHost,
   playerCount,
+  minPlayers,
   timer,
   onStartGame,
   onLogoClick,
@@ -71,7 +73,7 @@ export function RoomTopBar({
       )}
 
       {status === 'WAITING' && isHost && (
-        <Button size="sm" onClick={onStartGame} disabled={playerCount < 2} className="shrink-0 text-xs sm:text-sm px-2 sm:px-3">
+        <Button size="sm" onClick={onStartGame} disabled={playerCount < minPlayers} className="shrink-0 text-xs sm:text-sm px-2 sm:px-3">
           Start
         </Button>
       )}

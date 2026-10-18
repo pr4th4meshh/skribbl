@@ -1,5 +1,14 @@
 import { z } from 'zod';
 
+export const GAME_MODES = ['classic', 'hidden', 'speed', 'combination', 'teams'] as const;
+export const WORD_DIFFICULTIES = ['mixed', 'easy', 'medium', 'hard'] as const;
+export const TEAMS = ['red', 'blue'] as const;
+
+export const gameModeSchema = z.enum(GAME_MODES);
+export const wordDifficultySchema = z.enum(WORD_DIFFICULTIES);
+export const teamSchema = z.enum(TEAMS);
+export const reactionSchema = z.enum(['like', 'dislike']);
+
 export const playerSchema = z.object({
   id: z.string(),
   socketId: z.string(),
@@ -11,6 +20,7 @@ export const playerSchema = z.object({
   isHost: z.boolean(),
   isGuest: z.boolean(),
   connected: z.boolean(),
+  team: teamSchema.nullable(),
 });
 
 export const drawDataSchema = z.object({
@@ -29,6 +39,8 @@ export const chatMessageSchema = z.object({
   isCorrect: z.boolean(),
   isSystem: z.boolean(),
   timestamp: z.number(),
+  // 'close' marks private "you're close" notices shown only to the guesser
+  kind: z.enum(['close']).optional(),
 });
 
 export const roomStateSchema = z.object({
@@ -52,6 +64,14 @@ export const roomStateSchema = z.object({
   roundStartedAt: z.number(),
   revealedIndices: z.array(z.number()),
   gameId: z.string().nullable(),
+  mode: gameModeSchema,
+  wordDifficulty: wordDifficultySchema,
+  customWords: z.array(z.string()),
+  customWordsOnly: z.boolean(),
+  usedWords: z.array(z.string()),
+  kickVotes: z.record(z.string(), z.array(z.string())),
+  bannedIds: z.array(z.string()),
+  afkStrikes: z.record(z.string(), z.number()),
 });
 
 // auth schemas
@@ -85,6 +105,23 @@ export const createRoomSchema = z.object({
   drawTime: z.number().int().min(30).max(180).default(80),
   language: z.enum(['english']).default('english'),
   guestUsername: z.string().min(1).max(20).optional(),
+  mode: gameModeSchema.default('classic'),
+  wordDifficulty: wordDifficultySchema.default('mixed'),
+  customWords: z
+    .array(
+      z.string().trim().toLowerCase().min(1).max(30)
+        .regex(/^[\p{L}\p{N} '-]+$/u, 'Custom words can only contain letters, numbers, spaces, hyphens and apostrophes'),
+    )
+    .max(500)
+    .default([]),
+  customWordsOnly: z.boolean().default(false),
+}).superRefine((room, ctx) => {
+  if (room.customWordsOnly && new Set(room.customWords).size < 3) {
+    ctx.addIssue({ code: 'custom', path: ['customWords'], message: 'Add at least 3 custom words to use only custom words' });
+  }
+  if (room.mode === 'teams' && room.maxPlayers < 4) {
+    ctx.addIssue({ code: 'custom', path: ['maxPlayers'], message: 'Teams mode needs room for at least 4 players' });
+  }
 });
 
 // inferred ts types 
@@ -96,3 +133,7 @@ export type RoomState = z.infer<typeof roomStateSchema>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type CreateRoomInput = z.infer<typeof createRoomSchema>;
+export type GameMode = z.infer<typeof gameModeSchema>;
+export type WordDifficulty = z.infer<typeof wordDifficultySchema>;
+export type Team = z.infer<typeof teamSchema>;
+export type Reaction = z.infer<typeof reactionSchema>;

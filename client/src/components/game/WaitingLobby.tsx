@@ -1,17 +1,38 @@
+import type { GameMode, WordDifficulty } from '@/types'
+import { GAME_MODE_INFO, WORD_DIFFICULTY_LABELS, MIN_TEAMS_PLAYERS } from '@/utils/gameModes'
+
 interface Props {
   roomCode: string
   isHost: boolean
   playerCount: number
   maxPlayers: number
+  mode: GameMode
+  wordDifficulty: WordDifficulty
+  customWordsOnly: boolean
+  drawTime: number
+  totalRounds: number
 }
 
-export function WaitingLobby({ roomCode, isHost, playerCount, maxPlayers }: Props) {
+export function WaitingLobby({
+  roomCode,
+  isHost,
+  playerCount,
+  maxPlayers,
+  mode,
+  wordDifficulty,
+  customWordsOnly,
+  drawTime,
+  totalRounds,
+}: Props) {
+  const minPlayers = mode === 'teams' ? MIN_TEAMS_PLAYERS : 2
+  const modeInfo = GAME_MODE_INFO[mode] ?? GAME_MODE_INFO.classic
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center gap-6 text-center p-8">
       <div>
         <p className="text-2xl font-bold mb-1">Waiting for players…</p>
         <p className="text-sm text-muted-foreground">
-          {isHost ? 'You need at least 2 players to start' : 'Host will start soon'}
+          {isHost ? `You need at least ${minPlayers} players to start` : 'Host will start soon'}
         </p>
       </div>
       {isHost && (
@@ -21,6 +42,13 @@ export function WaitingLobby({ roomCode, isHost, playerCount, maxPlayers }: Prop
           <p className="text-xs text-brand-deep/60 mt-2">Share with friends</p>
         </div>
       )}
+      <div className="space-y-1">
+        <p className="text-sm font-semibold">{modeInfo.label} mode</p>
+        <p className="text-xs text-muted-foreground">{modeInfo.description}</p>
+        <p className="text-xs text-muted-foreground">
+          {totalRounds} rounds · {drawTime}s draw time · {customWordsOnly ? 'Custom words only' : `${WORD_DIFFICULTY_LABELS[wordDifficulty] ?? 'Mixed'} words`}
+        </p>
+      </div>
       <p className="text-xs text-muted-foreground">
         {playerCount}/{maxPlayers} players joined
       </p>

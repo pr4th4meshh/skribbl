@@ -40,6 +40,8 @@ export function initSocket(httpServer: HttpServer): Server {
       await gameService.endRound(data.code, io);
     } else if (data.type === 'reveal') {
       await gameService.handleReveal(data.code, data.revealNum, io);
+    } else if (data.type === 'idle-check') {
+      await gameService.handleIdleCheck(data.code, data.round, data.drawerIndex, io);
     }
   });
 

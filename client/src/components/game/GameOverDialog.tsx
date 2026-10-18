@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { GameEndData } from '@/hooks/socket/useRoomSocket'
 import { PlayerAvatar } from '@/components/game/PlayerAvatar'
+import { TEAM_STYLES } from '@/utils/gameModes'
 
 interface Props {
   gameOver: GameEndData | null
@@ -18,6 +19,22 @@ export function GameOverDialog({ gameOver, onClose }: Props) {
         </DialogHeader>
         {gameOver && (
           <div className="space-y-4 mt-1">
+            {gameOver.teams && (
+              <div className="text-center py-3 rounded-xl border bg-muted/40">
+                <p className="font-black text-lg">
+                  {gameOver.teams.winner === 'tie' ? "It's a tie!" : (
+                    <span className={TEAM_STYLES[gameOver.teams.winner].text}>
+                      {TEAM_STYLES[gameOver.teams.winner].label} team wins!
+                    </span>
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  <span className={TEAM_STYLES.red.text}>Red {gameOver.teams.red}</span>
+                  {' · '}
+                  <span className={TEAM_STYLES.blue.text}>Blue {gameOver.teams.blue}</span>
+                </p>
+              </div>
+            )}
             <div className="text-center py-4 bg-brand-yellow/25 border border-brand-amber/40 rounded-xl">
               <PlayerAvatar username={gameOver.winner.username} size={56} className="mx-auto mb-2" />
               <p className="font-bold text-lg">{gameOver.winner.username}</p>

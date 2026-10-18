@@ -8,9 +8,10 @@ interface Props {
   messages: ChatMessage[]
   onSend: (text: string) => void
   disabled?: boolean
+  placeholder?: string
 }
 
-export function Chat({ messages, onSend, disabled }: Props) {
+export function Chat({ messages, onSend, disabled, placeholder = 'Guess the word…' }: Props) {
   const [text, setText] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -43,6 +44,13 @@ export function Chat({ messages, onSend, disabled }: Props) {
                 </div>
               )
             }
+            if (msg.kind === 'close') {
+              return (
+                <div key={i} className="bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-2.5 py-1.5 text-xs font-medium">
+                  {msg.text}
+                </div>
+              )
+            }
             if (msg.isCorrect) {
               return (
                 <div key={i} className="bg-green-50 border border-green-200 text-green-700 rounded-lg px-2.5 py-1.5 text-xs font-medium">
@@ -65,7 +73,7 @@ export function Chat({ messages, onSend, disabled }: Props) {
         <Input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder={disabled ? 'Drawing…' : 'Guess the word…'}
+          placeholder={disabled ? 'Drawing…' : placeholder}
           disabled={disabled}
           maxLength={200}
           className="flex-1 text-sm h-8"
