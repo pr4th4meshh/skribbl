@@ -35,6 +35,13 @@ export interface RoundOverData {
   scores: { id: string; username: string; score: number; roundScore: number }[]
 }
 
+export interface Drawing {
+  round: number
+  drawer: string
+  word: string
+  image: string
+}
+
 let socket: ClientSocket | null = null
 
 export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandle | null>) {
@@ -48,6 +55,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
   const [roundOver, setRoundOver] = useState<RoundOverData | null>(null)
   const [timer, setTimer] = useState(0)
   const [reactions, setReactions] = useState<ReactionState>(EMPTY_REACTIONS)
+  const [drawings, setDrawings] = useState<Drawing[]>([])
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const drawTimeRef = useRef(0)
@@ -138,6 +146,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
       })
 
       socket.on(SERVER_EVENTS.GAME_STARTED, ({ round, totalRounds }) => {
+        setDrawings([])
         patchRoomState({ status: 'IN_PROGRESS', currentRound: round, totalRounds })
       })
 
@@ -222,6 +231,12 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
           roundScore: s.score - (curr?.players.find((p) => p.id === s.id)?.score ?? 0),
         }))
         setRoundOver({ word, round: curr?.currentRound ?? 0, scores: roundScores })
+        // Capture the finished drawing before the next round clears the canvas
+        const image = canvasRef.current?.snapshot()
+        const drawer = curr?.players.find((p) => p.isDrawing)
+        if (image) {
+          setDrawings((d) => [...d, { round: curr?.currentRound ?? 0, drawer: drawer?.username ?? '', word, image }])
+        }
         if (curr) {
           patchRoomState({
             currentWord: word,
@@ -324,6 +339,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     clearWordChoices: () => setWordChoices([]),
     gameOver,
     roundOver,
+    drawings,
     startGame,
     sendDraw,
     sendClear,

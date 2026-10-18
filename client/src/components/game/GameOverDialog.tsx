@@ -1,19 +1,29 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import type { GameEndData } from '@/hooks/socket/useRoomSocket'
+import { Download } from 'lucide-react'
+import type { GameEndData, Drawing } from '@/hooks/socket/useRoomSocket'
 import { PlayerAvatar } from '@/components/game/PlayerAvatar'
 import { TEAM_STYLES } from '@/utils/gameModes'
 
 interface Props {
   gameOver: GameEndData | null
+  drawings: Drawing[]
   onClose: () => void
 }
 
-export function GameOverDialog({ gameOver, onClose }: Props) {
+function drawingFilename({ round, word }: Drawing) {
+  const slug = word.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '')
+  return `skribbl-round${round}-${slug || 'drawing'}.png`
+}
+
+export function GameOverDialog({ gameOver, drawings, onClose }: Props) {
   return (
     <Dialog open={!!gameOver} onOpenChange={() => {}}>
-      <DialogContent className="sm:max-w-sm rounded-2xl" onInteractOutside={(e) => e.preventDefault()}>
+      <DialogContent
+        className={cn('rounded-2xl max-h-[90dvh] overflow-y-auto', drawings.length ? 'sm:max-w-lg' : 'sm:max-w-sm')}
+        onInteractOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-center text-xl">Game over!</DialogTitle>
         </DialogHeader>
@@ -58,6 +68,33 @@ export function GameOverDialog({ gameOver, onClose }: Props) {
                 </div>
               ))}
             </div>
+            {drawings.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-semibold">Drawings</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {drawings.map((d, i) => (
+                    <figure key={i} className="rounded-lg border overflow-hidden bg-white">
+                      <img src={d.image} alt={`${d.drawer} drawing ${d.word}`} className="w-full aspect-[4/3] object-contain" />
+                      <figcaption className="px-2 py-1 text-xs bg-card border-t flex items-center gap-1">
+                        <span className="flex-1 min-w-0 truncate">
+                          <span className="font-medium">{d.word}</span>
+                          {d.drawer && <span className="text-muted-foreground"> · {d.drawer}</span>}
+                        </span>
+                        <a
+                          href={d.image}
+                          download={drawingFilename(d)}
+                          title="Download PNG"
+                          aria-label={`Download ${d.word} drawing`}
+                          className="shrink-0 p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </a>
+                      </figcaption>
+                    </figure>
+                  ))}
+                </div>
+              </div>
+            )}
             <Button className="w-full" onClick={onClose}>Back to home</Button>
           </div>
         )}

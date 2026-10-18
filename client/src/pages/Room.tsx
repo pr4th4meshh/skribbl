@@ -43,6 +43,7 @@ export function Room() {
     clearWordChoices,
     gameOver,
     roundOver,
+    drawings,
     startGame,
     sendDraw,
     sendClear,
@@ -218,7 +219,7 @@ export function Room() {
         onSelect={(word) => { selectWord(word); clearWordChoices() }}
       />
 
-      <GameOverDialog gameOver={gameOver} onClose={() => navigate('/')} />
+      <GameOverDialog gameOver={gameOver} drawings={drawings} onClose={() => navigate('/')} />
     </div>
   )
 }
