@@ -1,5 +1,7 @@
+import { Volume2, VolumeX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { useSettingsStore } from '@/stores/settings.store'
 
 interface Props {
   roomCode: string
@@ -32,6 +34,8 @@ export function RoomTopBar({
   onStartGame,
   onLogoClick,
 }: Props) {
+  const muted = useSettingsStore((s) => s.muted)
+  const toggleMuted = useSettingsStore((s) => s.toggleMuted)
   const timerCritical = timer > 0 && timer <= 10
   const timerWarning = timer > 10 && timer <= 20
 
@@ -71,6 +75,15 @@ export function RoomTopBar({
           {timer}s
         </div>
       )}
+
+      <button
+        onClick={toggleMuted}
+        title={muted ? 'Unmute sounds' : 'Mute sounds'}
+        aria-label={muted ? 'Unmute sounds' : 'Mute sounds'}
+        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+      >
+        {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+      </button>
 
       {status === 'WAITING' && isHost && (
         <Button size="sm" onClick={onStartGame} disabled={playerCount < minPlayers} className="shrink-0 text-xs sm:text-sm px-2 sm:px-3">

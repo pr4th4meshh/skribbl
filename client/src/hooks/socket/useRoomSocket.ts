@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { io } from 'socket.io-client'
 import type { RefObject } from 'react'
@@ -8,6 +8,7 @@ import type { CanvasHandle } from '@/components/game/Canvas'
 import { useAuthStore } from '@/stores/auth.store'
 import { useGameStore } from '@/stores/game.store'
 import { api } from '@/lib/axios'
+import { playSound } from '@/utils/sounds'
 import type { ClientSocket } from '.'
 
 const SOCKET_URL = (import.meta.env['VITE_SOCKET_URL'] as string | undefined) ?? 'http://localhost:6969'
@@ -57,6 +58,11 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
     timerRef.current = null
     setTimer(0)
   }, [])
+
+  // Count down the last ten seconds, louder for the final three
+  useEffect(() => {
+    if (timer > 0 && timer <= 10) playSound(timer <= 3 ? 'tickFinal' : 'tick')
+  }, [timer])
 
   const startTimer = useCallback((seconds: number) => {
     if (timerRef.current) clearInterval(timerRef.current)
@@ -160,6 +166,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
       })
 
       socket.on(SERVER_EVENTS.GAME_WORD_CHOICES, ({ words }) => {
+        playSound('yourTurn')
         setWordChoices(words)
       })
 
@@ -194,6 +201,7 @@ export function useRoomSocket(roomCode: string, canvasRef: RefObject<CanvasHandl
       })
 
       socket.on(SERVER_EVENTS.GAME_GUESS_CORRECT, ({ player, scores }) => {
+        playSound('correct')
         const curr = useGameStore.getState().roomState
         if (curr) {
           patchRoomState({
